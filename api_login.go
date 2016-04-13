@@ -41,6 +41,7 @@ func logOut(w http.ResponseWriter, r *http.Request) error {
         return err
     }
 
-    session.Values["user"] = User{}
+    session.Values["userID"] = 0
+    session.Save(r, w)
     return nil
 }
