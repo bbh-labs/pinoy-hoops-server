@@ -17,7 +17,7 @@ import (
     "github.com/markbates/goth/providers/facebook"
     "github.com/markbates/goth/providers/instagram"
     "github.com/markbates/goth/providers/twitter"
-    _ "github.com/lib/pq"
+    "github.com/lib/pq"
 )
 
 var db *sql.DB
@@ -48,8 +48,44 @@ func main() {
     flag.Parse()
 
     // Connect to database
-    if db, err = sql.Open("postgres", "user=postgres dbname=postgres sslmode=none host=" + *dbhost + " port=" + *dbport); err != nil {
+    if db, err = sql.Open("postgres", "user=postgres dbname=postgres sslmode=disable host=" + *dbhost + " port=" + *dbport); err != nil {
         log.Fatal(err)
+    }
+
+    if err = db.Ping(); err != nil {
+        log.Fatal(err)
+    }
+
+    // Prepare database
+    if _, err := db.Exec(CREATE_USER_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
+    }
+    if _, err := db.Exec(CREATE_STORY_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
+    }
+    if _, err := db.Exec(CREATE_HOOP_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
+    }
+    if _, err := db.Exec(CREATE_ACTIVITY_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
+    }
+    if _, err := db.Exec(CREATE_HOOP_FEATURED_STORY_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
+    }
+    if _, err := db.Exec(CREATE_HOOP_STORY_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
     }
 
     // Setup social logins
