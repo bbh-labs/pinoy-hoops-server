@@ -11,6 +11,7 @@ import (
 
     "github.com/codegangsta/negroni"
     "github.com/gorilla/mux"
+    "github.com/gorilla/pat"
     "github.com/gorilla/sessions"
     "github.com/markbates/goth"
     "github.com/markbates/goth/gothic"
@@ -26,7 +27,7 @@ var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/m
 // Command-line flags
 var dbhost = flag.String("dbhost", "localhost", "database host")
 var dbport = flag.String("dbport", "5432", "database port")
-var address = flag.String("address", "localhost:8080", "server address")
+var address = flag.String("address", "http://localhost:8080", "server address")
 var port = flag.String("port", "8080", "server port")
 
 func main() {
@@ -98,15 +99,18 @@ func main() {
 
     // Prepare web server
     router := mux.NewRouter()
-    authRouter := router.PathPrefix("/auth").Subrouter()
-    authRouter.HandleFunc("/{provider}", gothic.BeginAuthHandler)
-    authRouter.HandleFunc("/{provider}/callback", authHandler)
     apiRouter := router.PathPrefix("/api").Subrouter()
     apiRouter.HandleFunc("/login", loginHandler)
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/hoop", hoopHandler)
     apiRouter.HandleFunc("/hoops", hoopsHandler)
     apiRouter.HandleFunc("/activities", activitiesHandler)
+
+    // Prepare social login authenticators
+    patHandler := pat.New()
+    patHandler.Get("/auth/{provider}/callback", authHandler)
+    patHandler.Get("/auth/{provider}", gothic.BeginAuthHandler)
+    router.PathPrefix("/auth").Handler(patHandler)
 
     // Run web server
     n := negroni.Classic()
