@@ -49,7 +49,7 @@ func userExists(user *User, fetchUser bool) (bool, *User) {
 
 func insertUser(user *User) error {
     _, err := db.Exec(
-        `INSERT INTO "user" VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+        INSERT_USER_SQL,
         &user.Name,
         &user.Description,
         &user.Email,

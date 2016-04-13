@@ -12,10 +12,12 @@ func loggedIn(w http.ResponseWriter, r *http.Request) bool {
         return false
     }
 
-    val := session.Values["user"]
-    if user, ok := val.(User); !ok {
+    val := session.Values["userID"]
+    if userID, ok := val.(int64); !ok {
+        log.Println("Failed to get user from session")
         return false
-    } else if exists, _ := userExists(&user, false); !exists {
+    } else if exists, _ := userExists(&User{ID: userID}, false); !exists {
+        log.Println("User doesn't exist")
         return false
     }
 
@@ -28,7 +30,8 @@ func logIn(w http.ResponseWriter, r *http.Request, user *User) error {
         return err
     }
 
-    session.Values["user"] = *user
+    session.Values["userID"] = user.ID
+    session.Save(r, w)
     return nil
 }
 

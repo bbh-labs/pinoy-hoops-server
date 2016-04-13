@@ -171,7 +171,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
     case "GET":
         ok := loggedIn(w, r)
         if ok {
-            w.WriteHeader(http.StatusOK)
+            w.Write([]byte("Logged In"))
         } else {
             w.WriteHeader(http.StatusForbidden)
         }

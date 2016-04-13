@@ -11,7 +11,8 @@ CREATE TABLE "user" (
 	twitter_id varchar(50),
 	image_url varchar(255),
 	created_at timestamp with time zone not null,
-	updated_at timestamp with time zone not null
+	updated_at timestamp with time zone not null,
+    UNIQUE (email, facebook_id, instagram_id, twitter_id)
 )`
 
 const CREATE_HOOP_TABLE_SQL = `
@@ -66,3 +67,8 @@ CREATE TABLE hoop_story (
 	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
 	FOREIGN KEY(story_id) REFERENCES story (id)
 )`
+
+// User
+const INSERT_USER_SQL = `
+INSERT INTO "user" (name, description, email, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING`
