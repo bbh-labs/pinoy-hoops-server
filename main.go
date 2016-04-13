@@ -2,11 +2,14 @@ package main
 
 import (
     "database/sql"
+    "encoding/json"
     "flag"
     "log"
     "net/http"
+    "path"
     "os"
     "os/signal"
+    "strconv"
     "syscall"
 
     "github.com/codegangsta/negroni"
@@ -83,11 +86,6 @@ func main() {
             log.Fatal(err)
         }
     }
-    if _, err := db.Exec(CREATE_HOOP_STORY_TABLE_SQL); err != nil {
-        if err := err.(*pq.Error); err.Code != "42P07" {
-            log.Fatal(err)
-        }
-    }
 
     // Setup social logins
     gothic.Store = sessions.NewFilesystemStore(os.TempDir(), []byte("pinoy-hoops"))
@@ -104,6 +102,8 @@ func main() {
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/hoop", hoopHandler)
     apiRouter.HandleFunc("/hoops", hoopsHandler)
+    apiRouter.HandleFunc("/story", storyHandler)
+    apiRouter.HandleFunc("/stories", storiesHandler)
     apiRouter.HandleFunc("/activities", activitiesHandler)
 
     // Prepare social login authenticators
@@ -169,7 +169,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        ok := loggedIn(w, r)
+        ok, _ := loggedIn(w, r, false)
         if ok {
             w.Write([]byte("Logged In"))
         } else {
@@ -190,6 +190,104 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 func hoopHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
+    case "POST":
+        ok, user := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        imageURL := r.FormValue("image_url")
+        if imageURL == "" {
+            if _, fileheader, err := r.FormFile("image"); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            } else {
+                if err := os.MkdirAll("content", os.ModeDir | 0775); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                basename := path.Base(fileheader.Filename)
+                destname := "content/" + basename
+                if err := os.Rename(fileheader.Filename, destname); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                imageURL = destname
+            }
+        }
+
+        latitude, err := strconv.ParseFloat(r.FormValue("latitude"), 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        longitude, err := strconv.ParseFloat(r.FormValue("longitude"), 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        name := r.FormValue("name")
+        description := r.FormValue("description")
+
+        // Start Transaction
+        tx, err := db.Begin()
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        var hoopID, storyID int64
+
+        // Insert Hoop
+        if result, err := tx.Exec(INSERT_HOOP_SQL, user.ID, name, description, latitude, longitude); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        } else if id, err := result.LastInsertId(); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        } else {
+            hoopID = id
+        }
+
+        // Insert Story
+        if result, err := tx.Exec(INSERT_STORY_SQL, user.ID, name, description, imageURL); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        } else if id, err := result.LastInsertId(); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        } else {
+            storyID = id
+        }
+
+        // Insert HoopFeaturedStory
+        if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        // End Transaction
+        if err := tx.Commit(); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -197,6 +295,152 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 
 func hoopsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
+    case "GET":
+        var hoops []Hoop
+
+        rows, err := db.Query(GET_HOOPS_SQL)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        for rows.Next() {
+            var hoop Hoop
+
+            if err := rows.Scan(
+                &hoop.ID,
+                &hoop.UserID,
+                &hoop.Name,
+                &hoop.Description,
+                &hoop.Latitude,
+                &hoop.Longitude,
+                &hoop.CreatedAt,
+                &hoop.UpdatedAt,
+            ); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            hoops = append(hoops, hoop)
+        }
+
+        data, err := json.Marshal(hoops)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func storyHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        ok, user := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop_id"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        imageURL := r.FormValue("image_url")
+        if imageURL == "" {
+            if _, fileheader, err := r.FormFile("image"); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            } else {
+                if err := os.MkdirAll("content", os.ModeDir | 0775); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                basename := path.Base(fileheader.Filename)
+                destname := "content/" + basename
+                if err := os.Rename(fileheader.Filename, destname); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                imageURL = destname
+            }
+        }
+
+        name := r.FormValue("name")
+        description := r.FormValue("description")
+
+        // Insert Story
+        if _, err := db.Exec(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func storiesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop_id"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        var stories []Story
+
+        rows, err := db.Query(GET_STORIES_SQL, hoopID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        for rows.Next() {
+            var story Story
+
+            if err := rows.Scan(
+                &story.ID,
+                &story.UserID,
+                &story.Name,
+                &story.Description,
+                &story.ImageURL,
+                &story.CreatedAt,
+                &story.UpdatedAt,
+            ); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            stories = append(stories, story)
+        }
+
+        data, err := json.Marshal(stories)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }

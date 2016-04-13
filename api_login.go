@@ -5,23 +5,23 @@ import (
     "net/http"
 )
 
-func loggedIn(w http.ResponseWriter, r *http.Request) bool {
+func loggedIn(w http.ResponseWriter, r *http.Request, fetchUser bool) (bool, *User) {
     session, err := ss.Get(r, "session")
     if err != nil {
         log.Println(err)
-        return false
+        return false, nil
     }
 
     val := session.Values["userID"]
     if userID, ok := val.(int64); !ok {
         log.Println("Failed to get user from session")
-        return false
-    } else if exists, _ := userExists(&User{ID: userID}, false); !exists {
+        return false, nil
+    } else if exists, user := userExists(&User{ID: userID}, fetchUser); !exists {
         log.Println("User doesn't exist")
-        return false
+        return false, nil
+    } else {
+        return true, user
     }
-
-    return true
 }
 
 func logIn(w http.ResponseWriter, r *http.Request, user *User) error {

@@ -32,6 +32,7 @@ CREATE TABLE hoop (
 const CREATE_STORY_TABLE_SQL = `
 CREATE TABLE story (
 	id bigserial primary key,
+	hoop_id bigserial not null,
 	user_id bigserial not null,
 	name varchar(255) not null,
 	description varchar(255) not null,
@@ -54,21 +55,41 @@ CREATE TABLE activity (
 
 const CREATE_HOOP_FEATURED_STORY_TABLE_SQL = `
 CREATE TABLE hoop_featured_story (
-	hoop_id bigserial not null,
+	hoop_id bigserial primary key,
 	story_id bigserial not null,
 	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
-	FOREIGN KEY(story_id) REFERENCES story (id)
-)`
-
-const CREATE_HOOP_STORY_TABLE_SQL = `
-CREATE TABLE hoop_story (
-	hoop_id bigserial not null,
-	story_id bigserial not null,
-	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
-	FOREIGN KEY(story_id) REFERENCES story (id)
+	FOREIGN KEY(story_id) REFERENCES story (id),
+    UNIQUE (story_id)
 )`
 
 // User
 const INSERT_USER_SQL = `
 INSERT INTO "user" (name, description, email, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING`
+VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING
+RETURNING id`
+
+// Hoop
+const INSERT_HOOP_SQL = `
+INSERT INTO hoop (user_id, name, description, latitude, longitude, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+RETURNING id`
+
+const GET_HOOPS_SQL = `
+SELECT id, user_id, name, description, latitude, longitude, created_at, updated
+FROM hoop`
+
+// Story
+const INSERT_STORY_SQL = `
+INSERT INTO story (hoop_id, user_id, name, description, image_url, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+RETURNING id`
+
+const GET_STORIES_SQL = `
+SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
+FROM story
+WHERE hoop_id = $1`
+
+// HoopFeaturedStory
+const INSERT_HOOP_FEATURED_STORY_SQL = `
+INSERT INTO hoop_featured_story (hoop_id, story_id)
+VALUES ($1, $2)`
