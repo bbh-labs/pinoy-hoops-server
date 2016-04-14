@@ -80,6 +80,16 @@ CREATE TABLE hoop_featured_story (
     UNIQUE (story_id)
 )`
 
+const CREATE_COMMENT_TABLE_SQL = `
+CREATE TABLE comment (
+    id bigserial primary key,
+    user_id bigserial not null,
+    text varchar(255) not null,
+	FOREIGN KEY(user_id) REFERENCES "user" (id),
+	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
+	FOREIGN KEY(story_id) REFERENCES story (id)
+)`
+
 // User
 const INSERT_USER_SQL = `
 INSERT INTO "user" (name, description, email, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
@@ -134,3 +144,39 @@ VALUES ($1, $2, $3, NOW())`
 const INSERT_POST_STORY_ACTIVITY_SQL = `
 INSERT INTO activity (user_id, type, story_id, created_at)
 VALUES ($1, $2, $3, NOW())`
+
+const INSERT_HOOP_COMMENT_ACTIVITY_SQL = `
+INSERT INTO activity (user_id, type, hoop_id, created_at)
+VALUES ($1, $2, $3, NOW())`
+
+const INSERT_STORY_COMMENT_ACTIVITY_SQL = `
+INSERT INTO activity (user_id, type, story_id, created_at)
+VALUES ($1, $2, $3, NOW())`
+
+const INSERT_HOOP_LIKE_ACTIVITY_SQL = `
+INSERT INTO activity (user_id, type, hoop_id, created_at)
+VALUES ($1, $2, $3, NOW())`
+
+const INSERT_STORY_LIKE_ACTIVITY_SQL = `
+INSERT INTO activity (user_id, type, story_id, created_at)
+VALUES ($1, $2, $3, NOW())`
+
+// Comment
+const GET_HOOP_COMMENTS_SQL = `
+SELECT user_id, hoop_id, text, created_at, updated_at FROM comment`
+
+const GET_STORY_COMMENTS_SQL = `
+SELECT user_id, story_id, text, created_at, updated_at FROM comment`
+
+const INSERT_HOOP_COMMENT_SQL = `
+INSERT INTO comment (user_id, text, created_at, updated_at)
+VALUES ($1, $2, NOW(), NOW())
+RETURNING id`
+
+const INSERT_STORY_COMMENT_SQL = `
+INSERT INTO comment (user_id, text, created_at, updated_at)
+VALUES ($1, $2, NOW(), NOW())
+RETURNING id`
+
+// Like
+

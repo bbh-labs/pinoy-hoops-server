@@ -76,6 +76,11 @@ func main() {
             log.Fatal(err)
         }
     }
+    if _, err := db.Exec(CREATE_COMMENT_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
+    }
     if _, err := db.Exec(CREATE_ACTIVITY_TABLE_SQL); err != nil {
         if err := err.(*pq.Error); err.Code != "42P07" {
             log.Fatal(err)
@@ -105,6 +110,10 @@ func main() {
     apiRouter.HandleFunc("/story", storyHandler)
     apiRouter.HandleFunc("/stories", storiesHandler)
     apiRouter.HandleFunc("/activities", activitiesHandler)
+    apiRouter.HandleFunc("/comment", commentHandler)
+    apiRouter.HandleFunc("/comments", commentsHandler)
+    apiRouter.HandleFunc("/like", likeHandler)
+    apiRouter.HandleFunc("/likes", likesHandler)
 
     // Prepare social login authenticators
     patHandler := pat.New()
@@ -517,6 +526,311 @@ func activitiesHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func commentHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        ok, user := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        text := r.FormValue("text")
+        if len(text) < 2 {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        hoopID := r.FormValue("hoopID")
+        if hoopID != "" {
+            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Start Transaction
+            tx, err := db.Begin()
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Insert Comment
+            if _, err = tx.Exec(INSERT_HOOP_COMMENT_SQL, user.ID, hoopID, text); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Insert Activity
+            if _, err = tx.Exec(INSERT_HOOP_COMMENT_ACTIVITY_SQL, user.ID, ACTIVITY_POST_COMMENT_HOOP, hoopID); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // End Transaction
+            if err := tx.Commit(); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        storyID := r.FormValue("storyID")
+        if storyID != "" {
+            storyID, err := strconv.ParseInt(storyID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Start Transaction
+            tx, err := db.Begin()
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Insert Comment
+            if _, err = tx.Exec(INSERT_STORY_COMMENT_SQL, user.ID, hoopID, text); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Insert Activity
+            if _, err = db.Exec(INSERT_STORY_COMMENT_ACTIVITY_SQL, user.ID, ACTIVITY_POST_COMMENT_STORY, storyID); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // End Transaction
+            if err := tx.Commit(); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        w.WriteHeader(http.StatusBadRequest)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func likeHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        ok, user := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        hoopID := r.FormValue("hoopID")
+        if hoopID != "" {
+            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Start Transaction
+            tx, err := db.Begin()
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Insert Activity
+            if _, err = db.Exec(INSERT_HOOP_LIKE_ACTIVITY_SQL, user.ID, ACTIVITY_POST_LIKE_HOOP, hoopID); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // End Transaction
+            if err := tx.Commit(); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        storyID := r.FormValue("storyID")
+        if storyID != "" {
+            storyID, err := strconv.ParseInt(storyID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Start Transaction
+            tx, err := db.Begin()
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // Insert Activity
+            if _, err = db.Exec(INSERT_STORY_LIKE_ACTIVITY_SQL, user.ID, ACTIVITY_POST_LIKE_STORY, storyID); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            // End Transaction
+            if err := tx.Commit(); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+
+        w.WriteHeader(http.StatusBadRequest)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func commentsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var comments []Comment
+
+        hoopID := r.FormValue("hoop_id")
+        if hoopID != "" {
+            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            rows, err := db.Query(GET_HOOP_COMMENTS_SQL, hoopID)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            var text sql.NullString
+
+            for rows.Next() {
+                var comment Comment
+
+                if err := rows.Scan(
+                    &comment.UserID,
+                    &text,
+                    &comment.CreatedAt,
+                    &comment.UpdatedAt,
+                ); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                comment.Text = fromNullString(text)
+
+                comments = append(comments, comment)
+            }
+
+            data, err := json.Marshal(comments)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            w.Write(data)
+            return;
+        }
+
+        storyID := r.FormValue("story_id")
+        if storyID != "" {
+            storyID, err := strconv.ParseInt(storyID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            rows, err := db.Query(GET_STORY_COMMENTS_SQL, storyID)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            var text sql.NullString
+
+            for rows.Next() {
+                var comment Comment
+
+                if err := rows.Scan(
+                    &comment.UserID,
+                    &text,
+                    &comment.CreatedAt,
+                    &comment.UpdatedAt,
+                ); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                comment.Text = fromNullString(text)
+
+                comments = append(comments, comment)
+            }
+
+            data, err := json.Marshal(comments)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            w.Write(data)
+            return;
+        }
+
+        w.WriteHeader(http.StatusBadRequest)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func likesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
