@@ -1,5 +1,23 @@
 package main
 
+import (
+    "database/sql"
+)
+
+func fromNullString(s sql.NullString) string {
+    if s.Valid {
+        return s.String
+    }
+    return ""
+}
+
+func fromNullInt64(i sql.NullInt64) int64 {
+    if i.Valid {
+        return i.Int64
+    }
+    return 0
+}
+
 const CREATE_USER_TABLE_SQL =`
 CREATE TABLE "user" (
 	id bigserial PRIMARY KEY,
@@ -67,6 +85,16 @@ const INSERT_USER_SQL = `
 INSERT INTO "user" (name, description, email, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING
 RETURNING id`
+
+const GET_USER_WITH_ID_SQL = `
+SELECT * FROM "user"
+WHERE id = $1
+LIMIT 1`
+
+const COUNT_USER_WITH_ID_SQL = `
+SELECT COUNT(id) FROM "user"
+WHERE id = $1
+LIMIT 1`
 
 // Hoop
 const INSERT_HOOP_SQL = `

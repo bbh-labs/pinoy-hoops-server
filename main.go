@@ -129,27 +129,20 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
     switch authuser.Provider {
     case "facebook":
-        user.FacebookID.String = authuser.UserID
-        user.FacebookID.Valid = true
+        user.FacebookID = authuser.UserID
     case "instagram":
-        user.InstagramID.String = authuser.UserID
-        user.InstagramID.Valid = true
+        user.InstagramID = authuser.UserID
     case "twitter":
-        user.TwitterID.String = authuser.UserID
-        user.TwitterID.Valid = true
+        user.TwitterID = authuser.UserID
     default:
         w.WriteHeader(http.StatusBadRequest)
         return
     }
 
-    user.Name.String = authuser.Name
-    user.Description.String = authuser.Description
-    user.Email.String = authuser.Email
-    user.ImageURL.String = authuser.AvatarURL
-    user.Name.Valid = true
-    user.Description.Valid = true
-    user.ImageURL.Valid = true
-    user.Email.Valid = true
+    user.Name = authuser.Name
+    user.Description = authuser.Description
+    user.Email = authuser.Email
+    user.ImageURL = authuser.AvatarURL
 
     if err := insertUser(user); err != nil {
         log.Println(err)
@@ -493,20 +486,25 @@ func activitiesHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        var hoopID, storyID sql.NullInt64
+
         for rows.Next() {
             var activity Activity
 
             if err := rows.Scan(
                 &activity.UserID,
                 &activity.Type,
-                &activity.HoopID,
-                &activity.StoryID,
+                &hoopID,
+                &storyID,
                 &activity.CreatedAt,
             ); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
+
+            activity.HoopID = fromNullInt64(hoopID)
+            activity.StoryID = fromNullInt64(storyID)
 
             activities = append(activities, activity)
         }
