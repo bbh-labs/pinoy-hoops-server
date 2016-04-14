@@ -280,6 +280,13 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        // Insert Activity
+        if _, err := tx.Exec(INSERT_POST_HOOP_ACTIVITY_SQL, user.ID, ACTIVITY_POST_HOOP, hoopID); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
         // End Transaction
         if err := tx.Commit(); err != nil {
             log.Println(err)
@@ -382,8 +389,36 @@ func storyHandler(w http.ResponseWriter, r *http.Request) {
         name := r.FormValue("name")
         description := r.FormValue("description")
 
+        tx, err := db.Begin()
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
         // Insert Story
-        if _, err := db.Exec(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL); err != nil {
+        result, err := tx.Exec(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        storyID, err := result.LastInsertId()
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        // Insert Activity
+        if _, err := tx.Exec(INSERT_POST_STORY_ACTIVITY_SQL, user.ID, ACTIVITY_POST_STORY, storyID); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        if err := tx.Commit(); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
@@ -448,6 +483,42 @@ func storiesHandler(w http.ResponseWriter, r *http.Request) {
 
 func activitiesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
+    case "GET":
+        var activities []Activity
+
+        rows, err := db.Query(GET_ACTIVITIES_SQL)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        for rows.Next() {
+            var activity Activity
+
+            if err := rows.Scan(
+                &activity.UserID,
+                &activity.Type,
+                &activity.HoopID,
+                &activity.StoryID,
+                &activity.CreatedAt,
+            ); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            activities = append(activities, activity)
+        }
+
+        data, err := json.Marshal(activities)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }

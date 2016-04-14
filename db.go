@@ -93,3 +93,16 @@ WHERE hoop_id = $1`
 const INSERT_HOOP_FEATURED_STORY_SQL = `
 INSERT INTO hoop_featured_story (hoop_id, story_id)
 VALUES ($1, $2)`
+
+// Activity
+const GET_ACTIVITIES_SQL = `
+SELECT user_id, type, hoop_id, story_id, created_at FROM activity
+LIMIT 100`
+
+const INSERT_POST_HOOP_ACTIVITY_SQL = `
+INSERT INTO activity (user_id, type, hoop_id, created_at)
+VALUES ($1, $2, $3, NOW())`
+
+const INSERT_POST_STORY_ACTIVITY_SQL = `
+INSERT INTO activity (user_id, type, story_id, created_at)
+VALUES ($1, $2, $3, NOW())`
