@@ -57,7 +57,8 @@ CREATE TABLE story (
 	image_url varchar(255) not null,
 	created_at timestamp with time zone not null,
 	updated_at timestamp with time zone not null,
-	FOREIGN KEY(user_id) REFERENCES "user" (id)
+	FOREIGN KEY(user_id) REFERENCES "user" (id),
+	FOREIGN KEY(hoop_id) REFERENCES hoop (id)
 )`
 
 const CREATE_ACTIVITY_TABLE_SQL = `
@@ -68,7 +69,9 @@ CREATE TABLE activity (
 	hoop_id bigserial,
 	story_id bigserial,
 	created_at timestamp with time zone not null,
-	FOREIGN KEY(user_id) REFERENCES "user" (id)
+	FOREIGN KEY(user_id) REFERENCES "user" (id),
+	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
+	FOREIGN KEY(story_id) REFERENCES story (id)
 )`
 
 const CREATE_HOOP_FEATURED_STORY_TABLE_SQL = `
@@ -85,9 +88,14 @@ CREATE TABLE comment (
     id bigserial primary key,
     user_id bigserial not null,
     text varchar(255) not null,
-	FOREIGN KEY(user_id) REFERENCES "user" (id),
-	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
-	FOREIGN KEY(story_id) REFERENCES story (id)
+	FOREIGN KEY(user_id) REFERENCES "user" (id)
+)`
+
+const CREATE_LIKE_TABLE_SQL = `
+CREATE TABLE like (
+    id bigserial primary key,
+    user_id bigserial not null,
+	FOREIGN KEY(user_id) REFERENCES "user" (id)
 )`
 
 // User

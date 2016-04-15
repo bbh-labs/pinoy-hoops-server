@@ -81,6 +81,11 @@ func main() {
             log.Fatal(err)
         }
     }
+    if _, err := db.Exec(CREATE_LIKE_TABLE_SQL); err != nil {
+        if err := err.(*pq.Error); err.Code != "42P07" {
+            log.Fatal(err)
+        }
+    }
     if _, err := db.Exec(CREATE_ACTIVITY_TABLE_SQL); err != nil {
         if err := err.(*pq.Error); err.Code != "42P07" {
             log.Fatal(err)
