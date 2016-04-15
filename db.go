@@ -179,4 +179,18 @@ VALUES ($1, $2, NOW(), NOW())
 RETURNING id`
 
 // Like
+const GET_HOOP_LIKES_SQL = `
+SELECT user_id, hoop_id, created_at, updated_at FROM comment`
 
+const GET_STORY_LIKES_SQL = `
+SELECT user_id, story_id, created_at, updated_at FROM comment`
+
+const INSERT_HOOP_LIKE_SQL = `
+INSERT INTO comment (user_id, created_at, updated_at)
+VALUES ($1, NOW(), NOW())
+RETURNING id`
+
+const INSERT_STORY_LIKE_SQL = `
+INSERT INTO comment (user_id, created_at, updated_at)
+VALUES ($1, NOW(), NOW())
+RETURNING id`

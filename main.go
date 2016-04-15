@@ -550,8 +550,7 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
         if hoopID != "" {
             hoopID, err := strconv.ParseInt(hoopID, 10, 64)
             if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
+                w.WriteHeader(http.StatusBadRequest)
                 return
             }
 
@@ -583,17 +582,10 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
-
-            w.WriteHeader(http.StatusOK)
-            return
-        }
-
-        storyID := r.FormValue("storyID")
-        if storyID != "" {
+        } else if storyID := r.FormValue("storyID"); storyID != "" {
             storyID, err := strconv.ParseInt(storyID, 10, 64)
             if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
+                w.WriteHeader(http.StatusBadRequest)
                 return
             }
 
@@ -626,11 +618,12 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
                 return
             }
 
-            w.WriteHeader(http.StatusOK)
+        } else {
+            w.WriteHeader(http.StatusBadRequest)
             return
         }
 
-        w.WriteHeader(http.StatusBadRequest)
+        w.WriteHeader(http.StatusOK)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -649,8 +642,7 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
         if hoopID != "" {
             hoopID, err := strconv.ParseInt(hoopID, 10, 64)
             if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
+                w.WriteHeader(http.StatusBadRequest)
                 return
             }
 
@@ -675,17 +667,10 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
-
-            w.WriteHeader(http.StatusOK)
-            return
-        }
-
-        storyID := r.FormValue("storyID")
-        if storyID != "" {
+        } else if storyID := r.FormValue("storyID"); storyID != "" {
             storyID, err := strconv.ParseInt(storyID, 10, 64)
             if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
+                w.WriteHeader(http.StatusBadRequest)
                 return
             }
 
@@ -711,11 +696,12 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
                 return
             }
 
-            w.WriteHeader(http.StatusOK)
+        } else {
+            w.WriteHeader(http.StatusBadRequest)
             return
         }
 
-        w.WriteHeader(http.StatusBadRequest)
+        w.WriteHeader(http.StatusOK)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -762,20 +748,7 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 
                 comments = append(comments, comment)
             }
-
-            data, err := json.Marshal(comments)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            w.Write(data)
-            return;
-        }
-
-        storyID := r.FormValue("story_id")
-        if storyID != "" {
+        } else if storyID := r.FormValue("story_id"); storyID != "" {
             storyID, err := strconv.ParseInt(storyID, 10, 64)
             if err != nil {
                 log.Println(err)
@@ -810,19 +783,19 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 
                 comments = append(comments, comment)
             }
-
-            data, err := json.Marshal(comments)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            w.Write(data)
-            return;
+        } else {
+            w.WriteHeader(http.StatusBadRequest)
+            return
         }
 
-        w.WriteHeader(http.StatusBadRequest)
+        data, err := json.Marshal(comments)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -831,6 +804,82 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
 func likesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
+        var likes []Like
+
+        hoopID := r.FormValue("hoop_id")
+        if hoopID != "" {
+            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            rows, err := db.Query(GET_HOOP_LIKES_SQL, hoopID)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            for rows.Next() {
+                var like Like
+
+                if err := rows.Scan(
+                    &like.UserID,
+                    &like.CreatedAt,
+                    &like.UpdatedAt,
+                ); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                likes = append(likes, like)
+            }
+        } else if storyID := r.FormValue("story_id"); storyID != "" {
+            storyID, err := strconv.ParseInt(storyID, 10, 64)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            rows, err := db.Query(GET_STORY_LIKES_SQL, storyID)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            for rows.Next() {
+                var like Like
+
+                if err := rows.Scan(
+                    &like.UserID,
+                    &like.CreatedAt,
+                    &like.UpdatedAt,
+                ); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+
+                likes = append(likes, like)
+            }
+        } else {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        data, err := json.Marshal(likes)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
