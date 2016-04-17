@@ -93,7 +93,7 @@ CREATE TABLE comment (
 )`
 
 const CREATE_LIKE_TABLE_SQL = `
-CREATE TABLE like (
+CREATE TABLE "like" (
     id bigserial primary key,
     user_id bigserial not null,
 	FOREIGN KEY(user_id) REFERENCES "user" (id)
@@ -189,17 +189,17 @@ RETURNING id`
 
 // Like
 const GET_HOOP_LIKES_SQL = `
-SELECT user_id, hoop_id, created_at, updated_at FROM comment`
+SELECT user_id, hoop_id, created_at, updated_at FROM "like"`
 
 const GET_STORY_LIKES_SQL = `
-SELECT user_id, story_id, created_at, updated_at FROM comment`
+SELECT user_id, story_id, created_at, updated_at FROM "like"`
 
 const INSERT_HOOP_LIKE_SQL = `
-INSERT INTO comment (user_id, created_at, updated_at)
+INSERT INTO "like" (user_id, created_at, updated_at)
 VALUES ($1, NOW(), NOW())
 RETURNING id`
 
 const INSERT_STORY_LIKE_SQL = `
-INSERT INTO comment (user_id, created_at, updated_at)
+INSERT INTO "like" (user_id, created_at, updated_at)
 VALUES ($1, NOW(), NOW())
 RETURNING id`

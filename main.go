@@ -67,12 +67,12 @@ func main() {
             log.Fatal(err)
         }
     }
-    if _, err := db.Exec(CREATE_STORY_TABLE_SQL); err != nil {
+    if _, err := db.Exec(CREATE_HOOP_TABLE_SQL); err != nil {
         if err := err.(*pq.Error); err.Code != "42P07" {
             log.Fatal(err)
         }
     }
-    if _, err := db.Exec(CREATE_HOOP_TABLE_SQL); err != nil {
+    if _, err := db.Exec(CREATE_STORY_TABLE_SQL); err != nil {
         if err := err.(*pq.Error); err.Code != "42P07" {
             log.Fatal(err)
         }
