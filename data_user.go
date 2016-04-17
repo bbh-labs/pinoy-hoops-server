@@ -11,6 +11,7 @@ type User struct {
     Name string `json:"name,omitempty"`
     Description string `json:"description,omitempty"`
     Email string `json:"email,omitempty"`
+    Password string `json:"-"`
     FacebookID string `json:"facebook_id,omitempty"`
     InstagramID string `json:"instagram_id,omitempty"`
     TwitterID string `json:"twitter_id,omitempty"`
@@ -24,7 +25,7 @@ func userExists(user *User, fetchUser bool) (bool, *User) {
         var name, description, email, facebookID, instagramID, twitterID, imageURL sql.NullString
 
         user := &User{}
-        if err := db.QueryRow(GET_USER_WITH_ID_SQL, user.ID).Scan(
+        if err := db.QueryRow(GET_USER_SQL, user.ID, user.Email, user.FacebookID, user.InstagramID, user.TwitterID).Scan(
             &user.ID,
             &name,
             &description,
@@ -51,7 +52,7 @@ func userExists(user *User, fetchUser bool) (bool, *User) {
         return true, user
     } else {
         count := 0
-        if err := db.QueryRow(COUNT_USER_WITH_ID_SQL, user.ID).Scan(&count); err != nil {
+        if err := db.QueryRow(COUNT_USER_SQL, user.ID, user.Email, user.FacebookID, user.InstagramID, user.TwitterID).Scan(&count); err != nil || count == 0 {
             log.Println(err)
             return false, nil
         }

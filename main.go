@@ -22,6 +22,7 @@ import (
     "github.com/markbates/goth/providers/instagram"
     "github.com/markbates/goth/providers/twitter"
     "github.com/lib/pq"
+    "golang.org/x/crypto/bcrypt"
 )
 
 var db *sql.DB
@@ -109,6 +110,7 @@ func main() {
     router := mux.NewRouter()
     apiRouter := router.PathPrefix("/api").Subrouter()
     apiRouter.HandleFunc("/login", loginHandler)
+    apiRouter.HandleFunc("/signup", signupHandler)
     apiRouter.HandleFunc("/logout", logoutHandler)
     apiRouter.HandleFunc("/hoop", hoopHandler)
     apiRouter.HandleFunc("/hoops", hoopsHandler)
@@ -153,6 +155,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    if exists, user := userExists(user, true); exists {
+        if err := logIn(w, r, user); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+        }
+        return
+    }
+
     user.Name = authuser.Name
     user.Description = authuser.Description
     user.Email = authuser.Email
@@ -176,12 +186,112 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        ok, _ := loggedIn(w, r, false)
-        if ok {
+        if ok, _ := loggedIn(w, r, false); !ok {
+            w.WriteHeader(http.StatusForbidden)
+        } else {
             w.Write([]byte("Logged In"))
+        }
+    case "POST":
+        email := r.FormValue("email")
+        if len(email) < 6 {
+            w.WriteHeader(http.StatusBadRequest)
+            w.Write([]byte("Email is too short"))
+        }
+
+        password := r.FormValue("password")
+        if len(password) < 8 {
+            w.WriteHeader(http.StatusBadRequest)
+            w.Write([]byte("Password is too short"))
+        }
+
+        user := &User{ Email: email }
+        if exists, user := userExists(user, true); !exists {
+            if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+                w.WriteHeader(http.StatusForbidden)
+            } else {
+                if err := logIn(w, r, user); err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                } else {
+                    w.WriteHeader(http.StatusOK)
+                }
+            }
         } else {
             w.WriteHeader(http.StatusForbidden)
         }
+    default: w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func signupHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        email := r.FormValue("email")
+        if len(email) < 6 {
+            w.WriteHeader(http.StatusBadRequest)
+            w.Write([]byte("Email is too short"))
+        }
+
+        password := r.FormValue("password")
+        if len(password) < 8 {
+            w.WriteHeader(http.StatusBadRequest)
+            w.Write([]byte("Password is too short"))
+        }
+
+        firstname := r.FormValue("firstname")
+        lastname := r.FormValue("lastname")
+
+        imageURL := ""
+        if _, fileheader, err := r.FormFile("image"); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        } else {
+            if err := os.MkdirAll("content", os.ModeDir | 0775); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            basename := path.Base(fileheader.Filename)
+            destname := "content/" + basename
+            if err := os.Rename(fileheader.Filename, destname); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            imageURL = destname
+        }
+
+        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        user := &User{
+            Name: firstname + " " + lastname,
+            Description: "",
+            Email: email,
+            Password: string(hashedPassword),
+            ImageURL: imageURL,
+        }
+
+        if err := insertUser(user); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        if err := logIn(w, r, user); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }

@@ -24,6 +24,7 @@ CREATE TABLE "user" (
 	name varchar(255),
 	description varchar(500),
 	email varchar(255),
+	password varchar(60),
 	facebook_id varchar(50),
 	instagram_id varchar(50),
 	twitter_id varchar(50),
@@ -104,14 +105,14 @@ INSERT INTO "user" (name, description, email, facebook_id, instagram_id, twitter
 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING
 RETURNING id`
 
-const GET_USER_WITH_ID_SQL = `
+const GET_USER_SQL = `
 SELECT * FROM "user"
-WHERE id = $1
+WHERE id = $1 OR email = $2 OR facebook_id = $3 OR instagram_id = $4 OR twitter_id = $5
 LIMIT 1`
 
-const COUNT_USER_WITH_ID_SQL = `
+const COUNT_USER_SQL = `
 SELECT COUNT(id) FROM "user"
-WHERE id = $1
+WHERE id = $1 OR email = $2 OR facebook_id = $3 OR instagram_id = $4 OR twitter_id = $5
 LIMIT 1`
 
 // Hoop
