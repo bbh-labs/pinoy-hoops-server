@@ -21,7 +21,8 @@ func fromNullInt64(i sql.NullInt64) int64 {
 const CREATE_USER_TABLE_SQL =`
 CREATE TABLE "user" (
 	id bigserial PRIMARY KEY,
-	name varchar(255),
+	firstname varchar(255),
+	lastname varchar(255),
 	description varchar(500),
 	email varchar(255),
 	password varchar(60),
@@ -70,9 +71,7 @@ CREATE TABLE activity (
 	hoop_id bigserial,
 	story_id bigserial,
 	created_at timestamp with time zone not null,
-	FOREIGN KEY(user_id) REFERENCES "user" (id),
-	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
-	FOREIGN KEY(story_id) REFERENCES story (id)
+	FOREIGN KEY(user_id) REFERENCES "user" (id)
 )`
 
 const CREATE_HOOP_FEATURED_STORY_TABLE_SQL = `
@@ -101,12 +100,30 @@ CREATE TABLE "like" (
 
 // User
 const INSERT_USER_SQL = `
-INSERT INTO "user" (name, description, email, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING
+INSERT INTO "user" (firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING
 RETURNING id`
 
+const UPDATE_USER_SQL = `
+UPDATE "user" SET
+firstname = $1,
+lastname = $2,
+email = $3,
+password = $4,
+image_url = $5,
+updated_at = NOW()`
+
+const UPDATE_USER_FACEBOOK_SQL = `
+UPDATE "user" SET facebook_id = $1 WHERE id = $2`
+
+const UPDATE_USER_INSTAGRAM_SQL = `
+UPDATE "user" SET instagram_id = $1 WHERE id = $2`
+
+const UPDATE_USER_TWITTER_SQL = `
+UPDATE "user" SET twitter_id = $1 WHERE id = $2`
+
 const GET_USER_SQL = `
-SELECT * FROM "user"
+SELECT id, firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
 WHERE id = $1 OR email = $2 OR facebook_id = $3 OR instagram_id = $4 OR twitter_id = $5
 LIMIT 1`
 
@@ -121,15 +138,40 @@ INSERT INTO hoop (user_id, name, description, latitude, longitude, created_at, u
 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 RETURNING id`
 
+const GET_HOOP_SQL = `
+SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at FROM hoop
+WHERE id = $1
+LIMIT 1`
+
+const COUNT_HOOP_SQL = `
+SELECT COUNT(id) FROM hoop
+WHERE id = $1
+LIMIT 1`
+
 const GET_HOOPS_SQL = `
-SELECT id, user_id, name, description, latitude, longitude, created_at, updated
+SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
 FROM hoop`
+
+const GET_HOOPS_WITH_NAME_SQL = `
+SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
+FROM hoop
+WHERE name LIKE $1`
 
 // Story
 const INSERT_STORY_SQL = `
 INSERT INTO story (hoop_id, user_id, name, description, image_url, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 RETURNING id`
+
+const GET_STORY_SQL = `
+SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at FROM story
+WHERE id = $1
+LIMIT 1`
+
+const COUNT_STORY_SQL = `
+SELECT COUNT(id) FROM story
+WHERE id = $1
+LIMIT 1`
 
 const GET_STORIES_SQL = `
 SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at

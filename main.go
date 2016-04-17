@@ -3,12 +3,15 @@ package main
 import (
     "database/sql"
     "encoding/json"
+    "errors"
     "flag"
+    "io"
     "log"
+    "math/rand"
     "net/http"
-    "path"
     "os"
     "os/signal"
+    "strings"
     "strconv"
     "syscall"
 
@@ -25,6 +28,8 @@ import (
     "golang.org/x/crypto/bcrypt"
 )
 
+const characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+
 var db *sql.DB
 var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/mKyyw="))
 
@@ -33,6 +38,14 @@ var dbhost = flag.String("dbhost", "localhost", "database host")
 var dbport = flag.String("dbport", "5432", "database port")
 var address = flag.String("address", "http://localhost:8080", "server address")
 var port = flag.String("port", "8080", "server port")
+
+// Errors
+var (
+    ErrEmailTooShort = errors.New("Email too short")
+    ErrPasswordTooShort = errors.New("Password too short")
+    ErrNotLoggedIn = errors.New("User is not logged in")
+    ErrPasswordMismatch = errors.New("Password mismatch")
+)
 
 func main() {
     var err error
@@ -112,6 +125,7 @@ func main() {
     apiRouter.HandleFunc("/login", loginHandler)
     apiRouter.HandleFunc("/signup", signupHandler)
     apiRouter.HandleFunc("/logout", logoutHandler)
+    apiRouter.HandleFunc("/user", userHandler)
     apiRouter.HandleFunc("/hoop", hoopHandler)
     apiRouter.HandleFunc("/hoops", hoopsHandler)
     apiRouter.HandleFunc("/story", storyHandler)
@@ -141,6 +155,30 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    if loggedIn, user := loggedIn(w, r, true); loggedIn {
+        switch authuser.Provider {
+        case "facebook":
+            if _, err := db.Exec(UPDATE_USER_FACEBOOK_SQL, authuser.UserID, user.ID); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+            }
+        case "instagram":
+            if _, err := db.Exec(UPDATE_USER_INSTAGRAM_SQL, authuser.UserID, user.ID); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+            }
+        case "twitter":
+            if _, err := db.Exec(UPDATE_USER_TWITTER_SQL, authuser.UserID, user.ID); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+            }
+        default:
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+        http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+    }
+
     user := &User{}
 
     switch authuser.Provider {
@@ -154,7 +192,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         w.WriteHeader(http.StatusBadRequest)
         return
     }
-
+    
     if exists, user := userExists(user, true); exists {
         if err := logIn(w, r, user); err != nil {
             log.Println(err)
@@ -163,7 +201,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    user.Name = authuser.Name
+    name := strings.Split(authuser.Name, " ")
+
+    if len(name) > 1 {
+        user.Firstname = strings.Join(name[:len(name) - 1], " ")
+        user.Lastname = name[len(name) - 1]
+    } else {
+        user.Firstname = name[0]
+    }
     user.Description = authuser.Description
     user.Email = authuser.Email
     user.ImageURL = authuser.AvatarURL
@@ -186,10 +231,15 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        if ok, _ := loggedIn(w, r, false); !ok {
+        if ok, user := loggedIn(w, r, true); !ok {
             w.WriteHeader(http.StatusForbidden)
         } else {
-            w.Write([]byte("Logged In"))
+            if data, err := json.Marshal(user); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+            } else {
+                w.Write(data)
+            }
         }
     case "POST":
         email := r.FormValue("email")
@@ -228,34 +278,46 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
     case "POST":
         email := r.FormValue("email")
         if len(email) < 6 {
-            w.WriteHeader(http.StatusBadRequest)
-            w.Write([]byte("Email is too short"))
+            http.Error(w, ErrEmailTooShort.Error(), http.StatusBadRequest)
+            return
         }
 
         password := r.FormValue("password")
         if len(password) < 8 {
-            w.WriteHeader(http.StatusBadRequest)
-            w.Write([]byte("Password is too short"))
+            http.Error(w, ErrPasswordTooShort.Error(), http.StatusBadRequest)
+            return
         }
 
         firstname := r.FormValue("firstname")
         lastname := r.FormValue("lastname")
 
         imageURL := ""
-        if _, fileheader, err := r.FormFile("image"); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        } else {
+        if _, fileheader, err := r.FormFile("image"); err == nil {
             if err := os.MkdirAll("content", os.ModeDir | 0775); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
 
-            basename := path.Base(fileheader.Filename)
-            destname := "content/" + basename
-            if err := os.Rename(fileheader.Filename, destname); err != nil {
+            destname := "content/" + randomFilename()
+
+            infile, err := fileheader.Open()
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+            defer infile.Close()
+
+            outfile, err := os.OpenFile(destname, os.O_CREATE | os.O_WRONLY, 0664)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+            defer outfile.Close()
+
+            if _, err := io.Copy(outfile, infile); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
@@ -272,8 +334,8 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         user := &User{
-            Name: firstname + " " + lastname,
-            Description: "",
+            Firstname: firstname,
+            Lastname: lastname,
             Email: email,
             Password: string(hashedPassword),
             ImageURL: imageURL,
@@ -297,6 +359,103 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
+func userHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "PATCH":
+        loggedIn, user := loggedIn(w, r, true)
+        if !loggedIn {
+            http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
+            return
+        }
+
+        oldPassword := r.FormValue("old-password")
+        if len(oldPassword) > 0 {
+            if len(oldPassword) < 8 {
+                http.Error(w, ErrPasswordTooShort.Error(), http.StatusBadRequest)
+                return
+            }
+
+            if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
+                http.Error(w, ErrPasswordMismatch.Error(), http.StatusBadRequest)
+                return
+            }
+
+            newPassword := r.FormValue("new-password")
+            if len(newPassword) < 8 {
+                http.Error(w, ErrPasswordTooShort.Error(), http.StatusBadRequest)
+                return
+            }
+
+            user.Password = newPassword
+        }
+
+        email := r.FormValue("email")
+        if len(email) < 6 {
+            http.Error(w, ErrEmailTooShort.Error(), http.StatusBadRequest)
+            return
+        }
+
+        firstname := r.FormValue("firstname")
+        lastname := r.FormValue("lastname")
+
+        if _, fileheader, err := r.FormFile("image"); err == nil {
+            if err := os.MkdirAll("content", os.ModeDir | 0775); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            destname := "content/" + randomFilename()
+
+            infile, err := fileheader.Open()
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+            defer infile.Close()
+
+            outfile, err := os.OpenFile(destname, os.O_CREATE | os.O_WRONLY, 0664)
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+            defer outfile.Close()
+
+            if _, err := io.Copy(outfile, infile); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            user.ImageURL = destname
+        }
+
+        hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        user.Firstname = firstname
+        user.Lastname = lastname
+        user.Email = email
+        user.Password = string(hashedPassword)
+
+        if err := updateUser(user); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
     if err := logOut(w, r); err != nil {
         log.Println(err)
@@ -308,7 +467,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func hoopHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
-        ok, user := loggedIn(w, r, false)
+        ok, user := loggedIn(w, r, true)
         if !ok {
             w.WriteHeader(http.StatusForbidden)
             return
@@ -327,9 +486,25 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
                     return
                 }
 
-                basename := path.Base(fileheader.Filename)
-                destname := "content/" + basename
-                if err := os.Rename(fileheader.Filename, destname); err != nil {
+                destname := "content/" + randomFilename()
+
+                infile, err := fileheader.Open()
+                if err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+                defer infile.Close()
+
+                outfile, err := os.OpenFile(destname, os.O_CREATE | os.O_WRONLY, 0664)
+                if err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+                defer outfile.Close()
+
+                if _, err := io.Copy(outfile, infile); err != nil {
                     log.Println(err)
                     w.WriteHeader(http.StatusInternalServerError)
                     return
@@ -365,29 +540,17 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
         var hoopID, storyID int64
 
         // Insert Hoop
-        if result, err := tx.Exec(INSERT_HOOP_SQL, user.ID, name, description, latitude, longitude); err != nil {
+        if err := tx.QueryRow(INSERT_HOOP_SQL, user.ID, name, description, latitude, longitude).Scan(&hoopID); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
-        } else if id, err := result.LastInsertId(); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        } else {
-            hoopID = id
         }
 
         // Insert Story
-        if result, err := tx.Exec(INSERT_STORY_SQL, user.ID, name, description, imageURL); err != nil {
+        if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL).Scan(&storyID); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
-        } else if id, err := result.LastInsertId(); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        } else {
-            storyID = id
         }
 
         // Insert HoopFeaturedStory
@@ -421,8 +584,15 @@ func hoopsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
         var hoops []Hoop
+        var rows *sql.Rows
+        var err error
 
-        rows, err := db.Query(GET_HOOPS_SQL)
+        if name := r.FormValue("name"); name != "" {
+            rows, err = db.Query(GET_HOOPS_WITH_NAME_SQL, "%" + name + "%")
+        } else {
+            rows, err = db.Query(GET_HOOPS_SQL)
+        }
+
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
@@ -466,7 +636,7 @@ func hoopsHandler(w http.ResponseWriter, r *http.Request) {
 func storyHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
-        ok, user := loggedIn(w, r, false)
+        ok, user := loggedIn(w, r, true)
         if !ok {
             w.WriteHeader(http.StatusForbidden)
             return
@@ -491,9 +661,25 @@ func storyHandler(w http.ResponseWriter, r *http.Request) {
                     return
                 }
 
-                basename := path.Base(fileheader.Filename)
-                destname := "content/" + basename
-                if err := os.Rename(fileheader.Filename, destname); err != nil {
+                destname := "content/" + randomFilename()
+
+                infile, err := fileheader.Open()
+                if err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+                defer infile.Close()
+
+                outfile, err := os.OpenFile(destname, os.O_CREATE | os.O_WRONLY, 0664)
+                if err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+                defer outfile.Close()
+
+                if _, err := io.Copy(outfile, infile); err != nil {
                     log.Println(err)
                     w.WriteHeader(http.StatusInternalServerError)
                     return
@@ -513,16 +699,10 @@ func storyHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        // Insert Story
-        result, err := tx.Exec(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL)
-        if err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
+        var storyID int64
 
-        storyID, err := result.LastInsertId()
-        if err != nil {
+        // Insert Story
+        if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL).Scan(&storyID); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
@@ -530,7 +710,7 @@ func storyHandler(w http.ResponseWriter, r *http.Request) {
 
         // Insert Activity
         if _, err := tx.Exec(INSERT_POST_STORY_ACTIVITY_SQL, user.ID, ACTIVITY_POST_STORY, storyID); err != nil {
-            log.Println(err)
+            log.Println("test", err)
             w.WriteHeader(http.StatusInternalServerError)
             return
         }
@@ -570,6 +750,7 @@ func storiesHandler(w http.ResponseWriter, r *http.Request) {
 
             if err := rows.Scan(
                 &story.ID,
+                &story.HoopID,
                 &story.UserID,
                 &story.Name,
                 &story.Description,
@@ -629,6 +810,7 @@ func activitiesHandler(w http.ResponseWriter, r *http.Request) {
 
             activity.HoopID = fromNullInt64(hoopID)
             activity.StoryID = fromNullInt64(storyID)
+            activity.fetchData()
 
             activities = append(activities, activity)
         }
@@ -858,7 +1040,6 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
                     w.WriteHeader(http.StatusInternalServerError)
                     return
                 }
-
                 comment.Text = fromNullString(text)
 
                 comments = append(comments, comment)
@@ -893,7 +1074,6 @@ func commentsHandler(w http.ResponseWriter, r *http.Request) {
                     w.WriteHeader(http.StatusInternalServerError)
                     return
                 }
-
                 comment.Text = fromNullString(text)
 
                 comments = append(comments, comment)
@@ -998,4 +1178,11 @@ func likesHandler(w http.ResponseWriter, r *http.Request) {
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
+}
+
+func randomFilename() (s string) {
+    for i := 0; i < 32; i++ {
+        s += string(characters[rand.Int() % len(characters)])
+    }
+    return
 }

@@ -8,7 +8,8 @@ import (
 
 type User struct {
     ID int64 `json:"id"`
-    Name string `json:"name,omitempty"`
+    Firstname string `json:"firstname,omitempty"`
+    Lastname string `json:"lastname,omitempty"`
     Description string `json:"description,omitempty"`
     Email string `json:"email,omitempty"`
     Password string `json:"-"`
@@ -20,16 +21,17 @@ type User struct {
     UpdatedAt time.Time `json:"updated_at"`
 }
 
-func userExists(user *User, fetchUser bool) (bool, *User) {
-    if fetchUser {
-        var name, description, email, facebookID, instagramID, twitterID, imageURL sql.NullString
+func userExists(user *User, fetch bool) (bool, *User) {
+    if fetch {
+        var firstname, lastname, description, email, password, facebookID, instagramID, twitterID, imageURL sql.NullString
 
-        user := &User{}
         if err := db.QueryRow(GET_USER_SQL, user.ID, user.Email, user.FacebookID, user.InstagramID, user.TwitterID).Scan(
             &user.ID,
-            &name,
+            &firstname,
+            &lastname,
             &description,
             &email,
+            &password,
             &facebookID,
             &instagramID,
             &twitterID,
@@ -41,9 +43,11 @@ func userExists(user *User, fetchUser bool) (bool, *User) {
             return false, nil
         }
 
-        user.Name = fromNullString(name)
+        user.Firstname = fromNullString(firstname)
+        user.Lastname = fromNullString(lastname)
         user.Description = fromNullString(description)
         user.Email = fromNullString(email)
+        user.Password = fromNullString(password)
         user.FacebookID = fromNullString(facebookID)
         user.InstagramID = fromNullString(instagramID)
         user.TwitterID = fromNullString(twitterID)
@@ -63,12 +67,26 @@ func userExists(user *User, fetchUser bool) (bool, *User) {
 func insertUser(user *User) error {
     _, err := db.Exec(
         INSERT_USER_SQL,
-        &user.Name,
+        &user.Firstname,
+        &user.Lastname,
         &user.Description,
         &user.Email,
+        &user.Password,
         &user.FacebookID,
         &user.InstagramID,
         &user.TwitterID,
+        &user.ImageURL,
+    )
+    return err
+}
+
+func updateUser(user *User) error {
+    _, err := db.Exec(
+        UPDATE_USER_SQL,
+        &user.Firstname,
+        &user.Lastname,
+        &user.Email,
+        &user.Password,
         &user.ImageURL,
     )
     return err
