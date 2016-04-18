@@ -1086,6 +1086,62 @@ func likesHandler(w http.ResponseWriter, r *http.Request) {
 func nearbyHoopsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
+        var hoops []Hoop
+
+        latitude, err := strconv.ParseFloat(r.FormValue("latitude"), 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        longitude, err := strconv.ParseFloat(r.FormValue("longitude"), 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        radius, err := strconv.ParseFloat(r.FormValue("radius"), 64)
+        if err != nil {
+            radius = 100
+        }
+
+        rows, err := db.Query(GET_NEARBY_HOOPS_SQL, latitude, latitude, longitude, radius)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+        defer rows.Close()
+
+        for rows.Next() {
+            var hoop Hoop
+
+            if err := rows.Scan(
+                &hoop.ID,
+                &hoop.UserID,
+                &hoop.Name,
+                &hoop.Description,
+                &hoop.Latitude,
+                &hoop.Longitude,
+                &hoop.CreatedAt,
+                &hoop.UpdatedAt,
+            ); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            hoops = append(hoops, hoop)
+        }
+
+        data, err := json.Marshal(hoops)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -1094,6 +1150,45 @@ func nearbyHoopsHandler(w http.ResponseWriter, r *http.Request) {
 func popularHoopsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
+        var hoops []Hoop
+
+        rows, err := db.Query(GET_HOOPS_SQL)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+        defer rows.Close()
+
+        for rows.Next() {
+            var hoop Hoop
+
+            if err := rows.Scan(
+                &hoop.ID,
+                &hoop.UserID,
+                &hoop.Name,
+                &hoop.Description,
+                &hoop.Latitude,
+                &hoop.Longitude,
+                &hoop.CreatedAt,
+                &hoop.UpdatedAt,
+            ); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            hoops = append(hoops, hoop)
+        }
+
+        data, err := json.Marshal(hoops)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -1102,6 +1197,45 @@ func popularHoopsHandler(w http.ResponseWriter, r *http.Request) {
 func latestHoopsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
+        var hoops []Hoop
+
+        rows, err := db.Query(GET_LATEST_HOOPS_SQL)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+        defer rows.Close()
+
+        for rows.Next() {
+            var hoop Hoop
+
+            if err := rows.Scan(
+                &hoop.ID,
+                &hoop.UserID,
+                &hoop.Name,
+                &hoop.Description,
+                &hoop.Latitude,
+                &hoop.Longitude,
+                &hoop.CreatedAt,
+                &hoop.UpdatedAt,
+            ); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
+            hoops = append(hoops, hoop)
+        }
+
+        data, err := json.Marshal(hoops)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
