@@ -1,24 +1,24 @@
 package main
 
 import (
-    "database/sql"
+	"database/sql"
 )
 
 func fromNullString(s sql.NullString) string {
-    if s.Valid {
-        return s.String
-    }
-    return ""
+	if s.Valid {
+		return s.String
+	}
+	return ""
 }
 
 func fromNullInt64(i sql.NullInt64) int64 {
-    if i.Valid {
-        return i.Int64
-    }
-    return 0
+	if i.Valid {
+		return i.Int64
+	}
+	return 0
 }
 
-const CREATE_USER_TABLE_SQL =`
+const CREATE_USER_TABLE_SQL = `
 CREATE TABLE "user" (
 	id bigserial PRIMARY KEY,
 	firstname varchar(255),
@@ -105,6 +105,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) ON CONFLICT (email, fa
 RETURNING id`
 
 const UPDATE_USER_SQL = `
+UPDATE "user" SET
+firstname = $1,
+lastname = $2,
+image_url = $3,
+updated_at = NOW()`
+
+const UPDATE_USER_WITH_EMAIL_AND_PASSWORD_SQL = `
 UPDATE "user" SET
 firstname = $1,
 lastname = $2,
