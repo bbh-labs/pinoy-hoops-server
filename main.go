@@ -137,6 +137,11 @@ func main() {
     apiRouter.HandleFunc("/like", likeHandler)
     apiRouter.HandleFunc("/likes", likesHandler)
 
+    // Prepare extra handlers
+    apiRouter.HandleFunc("/hoops/nearby", nearbyHoopsHandler)
+    apiRouter.HandleFunc("/hoops/popular", popularHoopsHandler)
+    apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
+
     // Prepare social login authenticators
     patHandler := pat.New()
     patHandler.Get("/auth/{provider}/callback", authHandler)
@@ -1073,6 +1078,30 @@ func likesHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func nearbyHoopsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func popularHoopsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func latestHoopsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
