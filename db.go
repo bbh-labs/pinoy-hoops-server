@@ -159,6 +159,12 @@ const GET_HOOPS_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
 FROM hoop`
 
+const GET_POPULAR_HOOPS_SQL = `
+SELECT hoop.id, hoop.user_id, hoop.name, hoop.description, hoop.latitude, hoop.longitude, hoop.created_at, hoop.updated_at
+FROM hoop
+INNER JOIN story ON story.hoop_id = hoop.id
+ORDER BY (SELECT COUNT(id) FROM story WHERE hoop_id = hoop.id) DESC`
+
 const GET_LATEST_HOOPS_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
 FROM hoop

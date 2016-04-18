@@ -1152,7 +1152,7 @@ func popularHoopsHandler(w http.ResponseWriter, r *http.Request) {
     case "GET":
         var hoops []Hoop
 
-        rows, err := db.Query(GET_HOOPS_SQL)
+        rows, err := db.Query(GET_POPULAR_HOOPS_SQL)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
