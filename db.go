@@ -162,7 +162,7 @@ FROM hoop`
 const DISTANCE_CALC = `(acos(sin(radians(h.latitude)) * sin(radians($1)) + cos(radians(h.latitude)) * cos(radians($2)) * cos(radians(h.longitude - $3))) * 6371 * 1000)`
 
 const GET_NEARBY_HOOPS_SQL = `
-SELECT * FROM (SELECT ` + DISTANCE_CALC + ` computedDistance, * FROM hoops h) AS tempQuery WHERE computedDistance < $4 ORDER BY computedDistance ASC LIMIT 100`
+SELECT * FROM (SELECT ` + DISTANCE_CALC + ` computedDistance, * FROM hoop h) AS tempQuery WHERE computedDistance < $4 ORDER BY computedDistance ASC LIMIT 100`
 
 const GET_POPULAR_HOOPS_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
