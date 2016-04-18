@@ -375,59 +375,40 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
 			return
 		}
+        
+        // Set user firstname and lastname
+		user.Firstname = r.FormValue("firstname")
+		user.Lastname = r.FormValue("lastname")
+		user.Email = r.FormValue("email")
 
-        hasSocialLogin := user.FacebookID != "" || user.InstagramID != "" || user.TwitterID != ""
-
-		oldPassword := r.FormValue("old-password")
-		if len(oldPassword) > 0 {
-			if len(oldPassword) < 8 {
-				http.Error(w, ErrPasswordTooShort.Error(), http.StatusBadRequest)
-				return
-			}
-
-			if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
-				http.Error(w, ErrPasswordMismatch.Error(), http.StatusBadRequest)
-				return
-			}
-
-			newPassword := r.FormValue("new-password")
-			if len(newPassword) < 8 {
-				http.Error(w, ErrPasswordTooShort.Error(), http.StatusBadRequest)
-				return
-			}
-
-            email := r.FormValue("email")
-            if len(email) < 6 {
-                if !hasSocialLogin {
-                    http.Error(w, ErrEmailTooShort.Error(), http.StatusBadRequest)
+        // Check if user is updating password
+        oldPassword := r.FormValue("old-password")
+        newPassword := r.FormValue("new-password")
+        if user.Password != "" {
+            if len(oldPassword) >= 8 && len(newPassword) >= 8 {
+                // Check if old password matches
+                if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
+                    w.WriteHeader(http.StatusBadRequest)
                     return
                 }
-            }
 
-            user.Email = email
-			user.Password = newPassword
-		} else if hasSocialLogin {
-			newPassword := r.FormValue("new-password")
-			if len(newPassword) < 8 {
-				http.Error(w, ErrPasswordTooShort.Error(), http.StatusBadRequest)
-				return
-			}
-
-            email := r.FormValue("email")
-            if len(email) < 6 {
-                if !hasSocialLogin {
-                    http.Error(w, ErrEmailTooShort.Error(), http.StatusBadRequest)
+                // Create hashed password from new password
+                hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+                if err != nil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
                     return
                 }
+                user.Password = string(hashedPassword)
+            } else if len(oldPassword) > 0 && len(newPassword) > 0 {
+                w.WriteHeader(http.StatusBadRequest)
+                return
+            } else {
+                user.Password = ""
             }
-
-            user.Email = email
-			user.Password = newPassword
         }
 
-		firstname := r.FormValue("firstname")
-		lastname := r.FormValue("lastname")
-
+        // Update user avatar if necessary
 		if _, fileheader, err := r.FormFile("image"); err == nil {
 			if err := os.MkdirAll("content", os.ModeDir|0775); err != nil {
 				log.Println(err)
@@ -461,19 +442,6 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 
 			user.ImageURL = destname
 		}
-
-		if user.Password != "" {
-			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-			if err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			user.Password = string(hashedPassword)
-		}
-
-		user.Firstname = firstname
-		user.Lastname = lastname
 
 		if err := updateUser(user); err != nil {
 			log.Println(err)
