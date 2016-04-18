@@ -159,15 +159,22 @@ const GET_HOOPS_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
 FROM hoop`
 
+const DISTANCE_CALC = `(acos(sin(radians(h.latitude)) * sin(radians($1)) + cos(radians(h.latitude)) * cos(radians($2)) * cos(radians(h.longitude - $3))) * 6371 * 1000)`
+
+const GET_NEARBY_HOOPS_SQL = `
+SELECT * FROM (SELECT ` + DISTANCE_CALC + ` computedDistance, * FROM hoops h) AS tempQuery WHERE computedDistance < $4 ORDER BY computedDistance ASC LIMIT 100`
+
 const GET_POPULAR_HOOPS_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
 FROM hoop
-ORDER BY (SELECT COUNT(id) FROM story WHERE hoop_id = hoop.id) DESC`
+ORDER BY (SELECT COUNT(id) FROM story WHERE hoop_id = hoop.id) DESC
+LIMIT 100`
 
 const GET_LATEST_HOOPS_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
 FROM hoop
-ORDER BY created_at DESC`
+ORDER BY created_at DESC
+LIMIT 100`
 
 const GET_HOOPS_WITH_NAME_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
@@ -262,9 +269,3 @@ const INSERT_STORY_LIKE_SQL = `
 INSERT INTO "like" (user_id, created_at, updated_at)
 VALUES ($1, NOW(), NOW())
 RETURNING id`
-
-
-const DISTANCE_CALC = `(acos(sin(radians(h.latitude)) * sin(radians($1)) + cos(radians(h.latitude)) * cos(radians($2)) * cos(radians(h.longitude - $3))) * 6371 * 1000)`
-
-const GET_NEARBY_HOOPS_SQL = `
-SELECT * FROM (SELECT ` + DISTANCE_CALC + ` computedDistance, * FROM hoops h) AS tempQuery WHERE computedDistance < $4 ORDER BY computedDistance ASC LIMIT 100`
