@@ -141,6 +141,7 @@ func main() {
     apiRouter.HandleFunc("/hoops/nearby", nearbyHoopsHandler)
     apiRouter.HandleFunc("/hoops/popular", popularHoopsHandler)
     apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
+    apiRouter.HandleFunc("/likes/count", likesCountHandler)
 
     // Prepare social login authenticators
     patHandler := pat.New()
@@ -832,13 +833,13 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
 func likeHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
-        ok, user := loggedIn(w, r, false)
+        ok, user := loggedIn(w, r, true)
         if !ok {
             w.WriteHeader(http.StatusForbidden)
             return
         }
 
-        hoopID := r.FormValue("hoopID")
+        hoopID := r.FormValue("hoop-id")
         if hoopID != "" {
             hoopID, err := strconv.ParseInt(hoopID, 10, 64)
             if err != nil {
@@ -867,7 +868,7 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
-        } else if storyID := r.FormValue("storyID"); storyID != "" {
+        } else if storyID := r.FormValue("story-id"); storyID != "" {
             storyID, err := strconv.ParseInt(storyID, 10, 64)
             if err != nil {
                 w.WriteHeader(http.StatusBadRequest)
@@ -1004,7 +1005,7 @@ func likesHandler(w http.ResponseWriter, r *http.Request) {
     case "GET":
         var likes []Like
 
-        hoopID := r.FormValue("hoop_id")
+        hoopID := r.FormValue("hoop-id")
         if hoopID != "" {
             hoopID, err := strconv.ParseInt(hoopID, 10, 64)
             if err != nil {
@@ -1035,7 +1036,7 @@ func likesHandler(w http.ResponseWriter, r *http.Request) {
 
                 likes = append(likes, like)
             }
-        } else if storyID := r.FormValue("story_id"); storyID != "" {
+        } else if storyID := r.FormValue("story-id"); storyID != "" {
             storyID, err := strconv.ParseInt(storyID, 10, 64)
             if err != nil {
                 log.Println(err)
@@ -1078,6 +1079,29 @@ func likesHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func likesCountHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var count int64
+
+        if hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64); err == nil {
+            if err := db.QueryRow(COUNT_HOOP_LIKES_SQL, hoopID).Scan(&count); err != nil {
+                w.Write([]byte(strconv.FormatInt(count, 10)))
+                return
+            }
+        } else if storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64); err == nil {
+            if err := db.QueryRow(COUNT_STORY_LIKES_SQL, storyID).Scan(&count); err != nil {
+                w.Write([]byte(strconv.FormatInt(count, 10)))
+                return
+            }
+        }
+
+        w.WriteHeader(http.StatusBadRequest)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }

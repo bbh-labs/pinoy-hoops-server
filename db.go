@@ -260,6 +260,12 @@ SELECT user_id, hoop_id, created_at, updated_at FROM "like"`
 const GET_STORY_LIKES_SQL = `
 SELECT user_id, story_id, created_at, updated_at FROM "like"`
 
+const COUNT_HOOP_LIKES_SQL = `
+SELECT COUNT(id) FROM "like" WHERE hoop_id = $1`
+
+const COUNT_STORY_LIKES_SQL = `
+SELECT COUNT(id) FROM "like" WHERE story_id = $1`
+
 const INSERT_HOOP_LIKE_SQL = `
 INSERT INTO "like" (user_id, created_at, updated_at)
 VALUES ($1, NOW(), NOW())
