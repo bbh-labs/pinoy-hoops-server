@@ -7,10 +7,10 @@ import (
     "flag"
     "io"
     "log"
-    "math/rand"
     "mime/multipart"
     "net/http"
     "os"
+    "os/exec"
     "os/signal"
     "strconv"
     "strings"
@@ -28,8 +28,6 @@ import (
     "github.com/markbates/goth/providers/twitter"
     "golang.org/x/crypto/bcrypt"
 )
-
-const characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 var db *sql.DB
 var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/mKyyw="))
@@ -1301,9 +1299,19 @@ func copyFile(r *http.Request, name string, folder, filename string) (destinatio
     return
 }
 
-func randomFilename() (s string) {
-    for i := 0; i < 32; i++ {
-        s += string(characters[rand.Int()%len(characters)])
+func randomFilename() string {
+    cmd := exec.Command("openssl", "rand", "-base64", "64")
+
+    output, err := cmd.Output()
+    if err != nil {
+        log.Fatal(err)
     }
-    return
+
+    for i := range output {
+        if output[i] == '/' {
+            output[i] = '-'
+        }
+    }
+
+    return string(output)
 }
