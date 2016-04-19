@@ -202,6 +202,24 @@ SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_a
 FROM story
 WHERE hoop_id = $1`
 
+const GET_MOST_LIKED_STORIES_SQL = `
+SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
+FROM story
+WHERE hoop_id = $1
+ORDER BY (SELECT COUNT(id) FROM activity WHERE story_id = $2 AND type = 202) DESC`
+
+const GET_MOST_VIEWED_STORIES_SQL = `
+SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
+FROM story
+WHERE hoop_id = $1
+ORDER BY (SELECT COUNT(id) FROM activity WHERE story_id = $2 AND type = 202) DESC`
+
+const GET_LATEST_STORIES_SQL = `
+SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
+FROM story
+WHERE hoop_id = $1
+ORDER BY created_at DESC`
+
 // HoopFeaturedStory
 const INSERT_HOOP_FEATURED_STORY_SQL = `
 INSERT INTO hoop_featured_story (hoop_id, story_id)
@@ -210,6 +228,7 @@ VALUES ($1, $2)`
 // Activity
 const GET_ACTIVITIES_SQL = `
 SELECT user_id, type, hoop_id, story_id, created_at FROM activity
+ORDER BY created_at DESC
 LIMIT 100`
 
 const INSERT_POST_HOOP_ACTIVITY_SQL = `
@@ -229,12 +248,18 @@ INSERT INTO activity (user_id, type, story_id, created_at)
 VALUES ($1, $2, $3, NOW())`
 
 const INSERT_HOOP_LIKE_ACTIVITY_SQL = `
-INSERT INTO activity (user_id, type, hoop_id, created_at)
-VALUES ($1, $2, $3, NOW())`
+INSERT INTO activity (user_id, type, hoop_id, story_id, created_at)
+VALUES ($1, $2, $3, 0, NOW())`
 
 const INSERT_STORY_LIKE_ACTIVITY_SQL = `
-INSERT INTO activity (user_id, type, story_id, created_at)
-VALUES ($1, $2, $3, NOW())`
+INSERT INTO activity (user_id, type, hoop_id, story_id, created_at)
+VALUES ($1, $2, 0, $3, NOW())`
+
+const DELETE_HOOP_ACTIVITY_SQL = `
+DELETE FROM activity WHERE user_id = $1 AND type = $2 AND hoop_id = $3`
+
+const DELETE_STORY_ACTIVITY_SQL = `
+DELETE FROM activity WHERE user_id = $1 AND type = $2 AND story_id = $3`
 
 // Comment
 const GET_HOOP_COMMENTS_SQL = `
@@ -261,10 +286,16 @@ const GET_STORY_LIKES_SQL = `
 SELECT user_id, story_id, created_at, updated_at FROM "like"`
 
 const COUNT_HOOP_LIKES_SQL = `
-SELECT COUNT(id) FROM "like" WHERE hoop_id = $1`
+SELECT COUNT(id) FROM activity WHERE hoop_id = $1 AND type = 202`
 
 const COUNT_STORY_LIKES_SQL = `
-SELECT COUNT(id) FROM "like" WHERE story_id = $1`
+SELECT COUNT(id) FROM activity WHERE story_id = $1 AND type = 202`
+
+const COUNT_HOOP_ACTIVITY_BY_USER_SQL = `
+SELECT COUNT(id) FROM activity WHERE user_id = $1 AND type = $2 AND hoop_id = $3`
+
+const COUNT_STORY_ACTIVITY_BY_USER_SQL = `
+SELECT COUNT(id) FROM activity WHERE user_id = $1 AND type = $2 AND story_id = $3`
 
 const INSERT_HOOP_LIKE_SQL = `
 INSERT INTO "like" (user_id, created_at, updated_at)

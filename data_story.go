@@ -49,3 +49,34 @@ func storyExists(story *Story, fetch bool) (bool, *Story) {
 		return true, nil
 	}
 }
+
+func getStories(query string, hoopID int64) ([]Story, error) {
+    var stories []Story
+
+    rows, err := db.Query(query, hoopID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    for rows.Next() {
+        var story Story
+
+        if err := rows.Scan(
+            &story.ID,
+            &story.HoopID,
+            &story.UserID,
+            &story.Name,
+            &story.Description,
+            &story.ImageURL,
+            &story.CreatedAt,
+            &story.UpdatedAt,
+        ); err != nil {
+            return nil, err
+        }
+
+        stories = append(stories, story)
+    }
+
+    return stories, nil
+}

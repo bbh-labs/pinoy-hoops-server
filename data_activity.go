@@ -10,7 +10,7 @@ const (
 	ACTIVITY_POST_COMMENT_HOOP  = 101
 	ACTIVITY_POST_COMMENT_STORY = 102
 	ACTIVITY_POST_LIKE_HOOP     = 201
-	ACTIVITY_POST_LIKE_STORY    = 201
+	ACTIVITY_POST_LIKE_STORY    = 202
 )
 
 type Activity struct {
@@ -36,6 +36,10 @@ func (a *Activity) fetchData() {
 			a.Data["hoop"] = hoop
 		}
 	case ACTIVITY_POST_STORY:
+		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
+			a.Data["story"] = story
+		}
+    case ACTIVITY_POST_LIKE_STORY:
 		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
 			a.Data["story"] = story
 		}

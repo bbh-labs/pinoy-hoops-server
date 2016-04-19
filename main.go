@@ -139,6 +139,9 @@ func main() {
     apiRouter.HandleFunc("/hoops/nearby", nearbyHoopsHandler)
     apiRouter.HandleFunc("/hoops/popular", popularHoopsHandler)
     apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
+    apiRouter.HandleFunc("/stories/mostliked", mostLikedStoriesHandler)
+    apiRouter.HandleFunc("/stories/mostviewed", mostViewedStoriesHandler)
+    apiRouter.HandleFunc("/stories/latest", latestStoriesHandler)
     apiRouter.HandleFunc("/likes/count", likesCountHandler)
 
     // Prepare social login authenticators
@@ -638,34 +641,11 @@ func storiesHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        var stories []Story
-
-        rows, err := db.Query(GET_STORIES_SQL, hoopID)
+        stories, err := getStories(GET_STORIES_SQL, hoopID)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
-        }
-
-        for rows.Next() {
-            var story Story
-
-            if err := rows.Scan(
-                &story.ID,
-                &story.HoopID,
-                &story.UserID,
-                &story.Name,
-                &story.Description,
-                &story.ImageURL,
-                &story.CreatedAt,
-                &story.UpdatedAt,
-            ); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            stories = append(stories, story)
         }
 
         data, err := json.Marshal(stories)
@@ -837,35 +817,19 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        hoopID := r.FormValue("hoop-id")
-        if hoopID != "" {
+        if hoopID := r.FormValue("hoop-id"); hoopID != "" {
             hoopID, err := strconv.ParseInt(hoopID, 10, 64)
             if err != nil {
                 w.WriteHeader(http.StatusBadRequest)
                 return
             }
 
-            // Start Transaction
-            tx, err := db.Begin()
-            if err != nil {
+            if err := toggleLike(user.ID, hoopID, "hoop"); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
 
-            // Insert Activity
-            if _, err = db.Exec(INSERT_HOOP_LIKE_ACTIVITY_SQL, user.ID, ACTIVITY_POST_LIKE_HOOP, hoopID); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // End Transaction
-            if err := tx.Commit(); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
         } else if storyID := r.FormValue("story-id"); storyID != "" {
             storyID, err := strconv.ParseInt(storyID, 10, 64)
             if err != nil {
@@ -873,28 +837,11 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
                 return
             }
 
-            // Start Transaction
-            tx, err := db.Begin()
-            if err != nil {
+            if err := toggleLike(user.ID, storyID, "story"); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
-
-            // Insert Activity
-            if _, err = db.Exec(INSERT_STORY_LIKE_ACTIVITY_SQL, user.ID, ACTIVITY_POST_LIKE_STORY, storyID); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // End Transaction
-            if err := tx.Commit(); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
         } else {
             w.WriteHeader(http.StatusBadRequest)
             return
@@ -1088,12 +1035,12 @@ func likesCountHandler(w http.ResponseWriter, r *http.Request) {
         var count int64
 
         if hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64); err == nil {
-            if err := db.QueryRow(COUNT_HOOP_LIKES_SQL, hoopID).Scan(&count); err != nil {
+            if err := db.QueryRow(COUNT_HOOP_LIKES_SQL, hoopID).Scan(&count); err == nil {
                 w.Write([]byte(strconv.FormatInt(count, 10)))
                 return
             }
         } else if storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64); err == nil {
-            if err := db.QueryRow(COUNT_STORY_LIKES_SQL, storyID).Scan(&count); err != nil {
+            if err := db.QueryRow(COUNT_STORY_LIKES_SQL, storyID).Scan(&count); err == nil {
                 w.Write([]byte(strconv.FormatInt(count, 10)))
                 return
             }
@@ -1251,6 +1198,93 @@ func latestHoopsHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         data, err := json.Marshal(hoops)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func mostLikedStoriesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop_id"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        stories, err := getStories(GET_MOST_LIKED_STORIES_SQL, hoopID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        data, err := json.Marshal(stories)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func mostViewedStoriesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop_id"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        stories, err := getStories(GET_MOST_VIEWED_STORIES_SQL, hoopID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        data, err := json.Marshal(stories)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func latestStoriesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop_id"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        stories, err := getStories(GET_LATEST_STORIES_SQL, hoopID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        data, err := json.Marshal(stories)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
