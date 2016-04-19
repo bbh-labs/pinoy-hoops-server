@@ -5,6 +5,7 @@ import (
     "encoding/json"
     "errors"
     "flag"
+    "fmt"
     "io"
     "log"
     "mime/multipart"
@@ -12,11 +13,13 @@ import (
     "os"
     "os/exec"
     "os/signal"
+    "sort"
     "strconv"
     "strings"
     "syscall"
 
     "github.com/codegangsta/negroni"
+    "github.com/garyburd/redigo/redis"
     "github.com/gorilla/mux"
     "github.com/gorilla/pat"
     "github.com/gorilla/sessions"
@@ -30,6 +33,7 @@ import (
 )
 
 var db *sql.DB
+var red redis.Conn
 var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/mKyyw="))
 
 // Command-line flags
@@ -70,6 +74,11 @@ func main() {
     }
 
     if err = db.Ping(); err != nil {
+        log.Fatal(err)
+    }
+
+    // Connect to Redis
+    if red, err = redis.Dial("tcp", ":6379"); err != nil {
         log.Fatal(err)
     }
 
@@ -132,17 +141,20 @@ func main() {
     apiRouter.HandleFunc("/activities", activitiesHandler)
     apiRouter.HandleFunc("/comment", commentHandler)
     apiRouter.HandleFunc("/comments", commentsHandler)
-    apiRouter.HandleFunc("/like", likeHandler)
-    apiRouter.HandleFunc("/likes", likesHandler)
+    apiRouter.HandleFunc("/like/hoop", likeHoopHandler)
+    apiRouter.HandleFunc("/like/story", likeStoryHandler)
+    apiRouter.HandleFunc("/view/hoop", viewHoopHandler)
+    apiRouter.HandleFunc("/view/story", viewStoryHandler)
 
     // Prepare extra handlers
+    apiRouter.HandleFunc("/hoop/likes", hoopLikesHandler)
     apiRouter.HandleFunc("/hoops/nearby", nearbyHoopsHandler)
     apiRouter.HandleFunc("/hoops/popular", popularHoopsHandler)
     apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
+    apiRouter.HandleFunc("/story/likes", storyLikesHandler)
     apiRouter.HandleFunc("/stories/mostliked", mostLikedStoriesHandler)
     apiRouter.HandleFunc("/stories/mostviewed", mostViewedStoriesHandler)
     apiRouter.HandleFunc("/stories/latest", latestStoriesHandler)
-    apiRouter.HandleFunc("/likes/count", likesCountHandler)
 
     // Prepare social login authenticators
     patHandler := pat.New()
@@ -808,7 +820,7 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func likeHandler(w http.ResponseWriter, r *http.Request) {
+func likeHoopHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
         ok, user := loggedIn(w, r, true)
@@ -829,8 +841,27 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
+        } else {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
 
-        } else if storyID := r.FormValue("story-id"); storyID != "" {
+        w.WriteHeader(http.StatusOK)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func likeStoryHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        ok, user := loggedIn(w, r, true)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        if storyID := r.FormValue("story-id"); storyID != "" {
             storyID, err := strconv.ParseInt(storyID, 10, 64)
             if err != nil {
                 w.WriteHeader(http.StatusBadRequest)
@@ -838,6 +869,70 @@ func likeHandler(w http.ResponseWriter, r *http.Request) {
             }
 
             if err := toggleLike(user.ID, storyID, "story"); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+        } else {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func viewHoopHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "PATCH":
+        ok, _ := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        if hoopID := r.FormValue("hoop-id"); hoopID != "" {
+            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
+            if err != nil {
+                w.WriteHeader(http.StatusBadRequest)
+                return
+            }
+
+            if err := view(hoopID, "hoop"); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+        } else {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func viewStoryHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "PATCH":
+        ok, _ := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        if storyID := r.FormValue("story-id"); storyID != "" {
+            storyID, err := strconv.ParseInt(storyID, 10, 64)
+            if err != nil {
+                w.WriteHeader(http.StatusBadRequest)
+                return
+            }
+
+            if err := view(storyID, "story"); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
@@ -1029,17 +1124,30 @@ func likesHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func likesCountHandler(w http.ResponseWriter, r *http.Request) {
+func hoopLikesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
         var count int64
 
         if hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64); err == nil {
-            if err := db.QueryRow(COUNT_HOOP_LIKES_SQL, hoopID).Scan(&count); err == nil {
+            if err := db.QueryRow(COUNT_STORY_LIKES_SQL, hoopID).Scan(&count); err == nil {
                 w.Write([]byte(strconv.FormatInt(count, 10)))
                 return
             }
-        } else if storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64); err == nil {
+        }
+
+        w.WriteHeader(http.StatusBadRequest)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func storyLikesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var count int64
+
+        if storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64); err == nil {
             if err := db.QueryRow(COUNT_STORY_LIKES_SQL, storyID).Scan(&count); err == nil {
                 w.Write([]byte(strconv.FormatInt(count, 10)))
                 return
@@ -1248,14 +1356,34 @@ func mostViewedStoriesHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        stories, err := getStories(GET_MOST_VIEWED_STORIES_SQL, hoopID)
+        stories, err := getStories(GET_STORIES_SQL, hoopID)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
         }
 
-        data, err := json.Marshal(stories)
+        for i := range stories {
+            if reply, err := red.Do("HGET", fmt.Sprintf("story:%ld", stories[i].ID), "view_count"); err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            } else if count, err := redis.Int64(reply, err); err != nil {
+                if err != redis.ErrNil {
+                    log.Println(err)
+                    w.WriteHeader(http.StatusInternalServerError)
+                    return
+                }
+                continue
+            } else {
+                stories[i].viewCount = count
+            }
+        }
+
+        mostViewedStories := MostViewedStories(stories)
+        sort.Sort(mostViewedStories)
+
+        data, err := json.Marshal(mostViewedStories)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)

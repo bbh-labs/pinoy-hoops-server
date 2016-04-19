@@ -1,6 +1,7 @@
 package main
 
 import (
+    "fmt"
 	"time"
 )
 
@@ -72,5 +73,12 @@ func deleteLike(userID int64, otherID int64, typ string) error {
         return err
     }
 
+    return nil
+}
+
+func view(otherID int64, typ string) error {
+    if _, err := red.Do("HINCRBY", fmt.Sprintf("%s:%d", typ, otherID), "view_count", 1); err != nil {
+        return err
+    }
     return nil
 }

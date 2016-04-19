@@ -15,6 +15,23 @@ type Story struct {
 	ImageURL    string    `json:"image_url"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+    viewCount   int64     `json:"-"`
+}
+
+type MostViewedStories []Story
+
+func (stories MostViewedStories) Len() int {
+    return len(stories)
+}
+
+func (stories MostViewedStories) Less(i, j int) bool {
+    return stories[i].viewCount > stories[j].viewCount
+}
+
+func (stories MostViewedStories) Swap(i, j int) {
+    tmp := stories[i]
+    stories[i] = stories[j]
+    stories[j] = tmp
 }
 
 func storyExists(story *Story, fetch bool) (bool, *Story) {
