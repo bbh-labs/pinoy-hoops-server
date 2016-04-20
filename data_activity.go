@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -44,4 +45,37 @@ func (a *Activity) fetchData() {
 			a.Data["story"] = story
 		}
 	}
+}
+
+func getActivities(userID int64) ([]Activity, error) {
+    var activities []Activity
+
+    rows, err := db.Query(GET_ACTIVITIES_SQL, userID)
+    if err != nil {
+        return nil, err
+    }
+
+    var hoopID, storyID sql.NullInt64
+
+    for rows.Next() {
+        var activity Activity
+
+        if err := rows.Scan(
+            &activity.UserID,
+            &activity.Type,
+            &hoopID,
+            &storyID,
+            &activity.CreatedAt,
+        ); err != nil {
+            return nil, err
+        }
+
+        activity.HoopID = fromNullInt64(hoopID)
+        activity.StoryID = fromNullInt64(storyID)
+        activity.fetchData()
+
+        activities = append(activities, activity)
+    }
+
+    return activities, nil
 }

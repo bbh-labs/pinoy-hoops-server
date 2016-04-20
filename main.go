@@ -157,6 +157,7 @@ func main() {
     apiRouter.HandleFunc("/stories/mostliked", mostLikedStoriesHandler)
     apiRouter.HandleFunc("/stories/mostviewed", mostViewedStoriesHandler)
     apiRouter.HandleFunc("/stories/latest", latestStoriesHandler)
+    apiRouter.HandleFunc("/user/lastactivitychecktime", userLastActivityCheckTimeHandler)
 
     // Prepare social login authenticators
     patHandler := pat.New()
@@ -678,37 +679,17 @@ func storiesHandler(w http.ResponseWriter, r *http.Request) {
 func activitiesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        var activities []Activity
+        ok, user := loggedIn(w, r, true)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
 
-        rows, err := db.Query(GET_ACTIVITIES_SQL)
+        activities, err := getActivities(user.ID)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
-        }
-
-        var hoopID, storyID sql.NullInt64
-
-        for rows.Next() {
-            var activity Activity
-
-            if err := rows.Scan(
-                &activity.UserID,
-                &activity.Type,
-                &hoopID,
-                &storyID,
-                &activity.CreatedAt,
-            ); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            activity.HoopID = fromNullInt64(hoopID)
-            activity.StoryID = fromNullInt64(storyID)
-            activity.fetchData()
-
-            activities = append(activities, activity)
         }
 
         data, err := json.Marshal(activities)
@@ -1302,7 +1283,7 @@ func mostViewedStoriesHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         for i := range stories {
-            if reply, err := red.Do("HGET", fmt.Sprintf("story:%ld", stories[i].ID), "view_count"); err != nil {
+            if reply, err := red.Do("HGET", fmt.Sprintf("story:%d", stories[i].ID), "view_count"); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
@@ -1358,6 +1339,33 @@ func latestStoriesHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func userLastActivityCheckTimeHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "PATCH":
+        ok, user := loggedIn(w, r, true)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        secs, err := strconv.ParseInt(r.FormValue("time"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        if err := user.updateLastActivityCheckTime(secs); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }

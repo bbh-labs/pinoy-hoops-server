@@ -231,6 +231,7 @@ VALUES ($1, $2)`
 // Activity
 const GET_ACTIVITIES_SQL = `
 SELECT user_id, type, hoop_id, story_id, created_at FROM activity
+WHERE user_id != $1
 ORDER BY created_at DESC
 LIMIT 100`
 
