@@ -88,6 +88,10 @@ CREATE TABLE comment (
     id bigserial primary key,
     user_id bigserial not null,
     text varchar(255) not null,
+    hoop_id bigserial,
+    story_id bigserial,
+    created_at timestamp with time zone not null,
+    updated_at timestamp with time zone not null,
 	FOREIGN KEY(user_id) REFERENCES "user" (id)
 )`
 
@@ -132,6 +136,11 @@ UPDATE "user" SET twitter_id = $1 WHERE id = $2`
 const GET_USER_SQL = `
 SELECT id, firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
 WHERE id = $1 OR email = $2 OR facebook_id = $3 OR instagram_id = $4 OR twitter_id = $5
+LIMIT 1`
+
+const GET_USER_BY_ID_SQL = `
+SELECT id, firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
+WHERE id = $1
 LIMIT 1`
 
 const COUNT_USER_SQL = `
@@ -257,19 +266,21 @@ DELETE FROM activity WHERE user_id = $1 AND type = $2 AND story_id = $3`
 
 // Comment
 const GET_HOOP_COMMENTS_SQL = `
-SELECT user_id, hoop_id, text, created_at, updated_at FROM comment`
+SELECT user_id, text, hoop_id, created_at, updated_at FROM comment
+WHERE hoop_id = $1`
 
 const GET_STORY_COMMENTS_SQL = `
-SELECT user_id, story_id, text, created_at, updated_at FROM comment`
+SELECT user_id, text, story_id, created_at, updated_at FROM comment
+WHERE story_id = $1`
 
 const INSERT_HOOP_COMMENT_SQL = `
-INSERT INTO comment (user_id, text, created_at, updated_at)
-VALUES ($1, $2, NOW(), NOW())
+INSERT INTO comment (user_id, text, hoop_id, created_at, updated_at)
+VALUES ($1, $2, $3, NOW(), NOW())
 RETURNING id`
 
 const INSERT_STORY_COMMENT_SQL = `
-INSERT INTO comment (user_id, text, created_at, updated_at)
-VALUES ($1, $2, NOW(), NOW())
+INSERT INTO comment (user_id, text, story_id, created_at, updated_at)
+VALUES ($1, $2, $3, NOW(), NOW())
 RETURNING id`
 
 // Like

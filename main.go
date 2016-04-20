@@ -139,19 +139,21 @@ func main() {
     apiRouter.HandleFunc("/story", storyHandler)
     apiRouter.HandleFunc("/stories", storiesHandler)
     apiRouter.HandleFunc("/activities", activitiesHandler)
-    apiRouter.HandleFunc("/comment", commentHandler)
-    apiRouter.HandleFunc("/comments", commentsHandler)
+    apiRouter.HandleFunc("/comment/hoop", commentHoopHandler)
+    apiRouter.HandleFunc("/comment/story", commentStoryHandler)
     apiRouter.HandleFunc("/like/hoop", likeHoopHandler)
     apiRouter.HandleFunc("/like/story", likeStoryHandler)
     apiRouter.HandleFunc("/view/hoop", viewHoopHandler)
     apiRouter.HandleFunc("/view/story", viewStoryHandler)
 
     // Prepare extra handlers
+    apiRouter.HandleFunc("/hoop/comments", hoopCommentsHandler)
     apiRouter.HandleFunc("/hoop/likes", hoopLikesHandler)
     apiRouter.HandleFunc("/hoops/nearby", nearbyHoopsHandler)
     apiRouter.HandleFunc("/hoops/popular", popularHoopsHandler)
     apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
     apiRouter.HandleFunc("/story/likes", storyLikesHandler)
+    apiRouter.HandleFunc("/story/comments", storyCommentsHandler)
     apiRouter.HandleFunc("/stories/mostliked", mostLikedStoriesHandler)
     apiRouter.HandleFunc("/stories/mostviewed", mostViewedStoriesHandler)
     apiRouter.HandleFunc("/stories/latest", latestStoriesHandler)
@@ -722,10 +724,10 @@ func activitiesHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func commentHandler(w http.ResponseWriter, r *http.Request) {
+func commentHoopHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "POST":
-        ok, user := loggedIn(w, r, false)
+        ok, user := loggedIn(w, r, true)
         if !ok {
             w.WriteHeader(http.StatusForbidden)
             return
@@ -737,80 +739,48 @@ func commentHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        hoopID := r.FormValue("hoopID")
-        if hoopID != "" {
-            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
-            if err != nil {
-                w.WriteHeader(http.StatusBadRequest)
-                return
-            }
-
-            // Start Transaction
-            tx, err := db.Begin()
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // Insert Comment
-            if _, err = tx.Exec(INSERT_HOOP_COMMENT_SQL, user.ID, hoopID, text); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // Insert Activity
-            if _, err = tx.Exec(INSERT_HOOP_COMMENT_ACTIVITY_SQL, user.ID, ACTIVITY_POST_COMMENT_HOOP, hoopID); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // End Transaction
-            if err := tx.Commit(); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-        } else if storyID := r.FormValue("storyID"); storyID != "" {
-            storyID, err := strconv.ParseInt(storyID, 10, 64)
-            if err != nil {
-                w.WriteHeader(http.StatusBadRequest)
-                return
-            }
-
-            // Start Transaction
-            tx, err := db.Begin()
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // Insert Comment
-            if _, err = tx.Exec(INSERT_STORY_COMMENT_SQL, user.ID, hoopID, text); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // Insert Activity
-            if _, err = db.Exec(INSERT_STORY_COMMENT_ACTIVITY_SQL, user.ID, ACTIVITY_POST_COMMENT_STORY, storyID); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            // End Transaction
-            if err := tx.Commit(); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-        } else {
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64)
+        if err != nil {
             w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        if err := insertHoopComment(user.ID, hoopID, text); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func commentStoryHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        ok, user := loggedIn(w, r, true)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        text := r.FormValue("text")
+        if len(text) < 2 {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        if err := insertStoryComment(user.ID, storyID, text); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
             return
         }
 
@@ -948,82 +918,50 @@ func viewStoryHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func commentsHandler(w http.ResponseWriter, r *http.Request) {
+func hoopCommentsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        var comments []Comment
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
 
-        hoopID := r.FormValue("hoop_id")
-        if hoopID != "" {
-            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
+        comments, err := getHoopComments(hoopID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
 
-            rows, err := db.Query(GET_HOOP_COMMENTS_SQL, hoopID)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
+        data, err := json.Marshal(comments)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
 
-            var text sql.NullString
+        w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
 
-            for rows.Next() {
-                var comment Comment
+func storyCommentsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
 
-                if err := rows.Scan(
-                    &comment.UserID,
-                    &text,
-                    &comment.CreatedAt,
-                    &comment.UpdatedAt,
-                ); err != nil {
-                    log.Println(err)
-                    w.WriteHeader(http.StatusInternalServerError)
-                    return
-                }
-                comment.Text = fromNullString(text)
-
-                comments = append(comments, comment)
-            }
-        } else if storyID := r.FormValue("story_id"); storyID != "" {
-            storyID, err := strconv.ParseInt(storyID, 10, 64)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            rows, err := db.Query(GET_STORY_COMMENTS_SQL, storyID)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            var text sql.NullString
-
-            for rows.Next() {
-                var comment Comment
-
-                if err := rows.Scan(
-                    &comment.UserID,
-                    &text,
-                    &comment.CreatedAt,
-                    &comment.UpdatedAt,
-                ); err != nil {
-                    log.Println(err)
-                    w.WriteHeader(http.StatusInternalServerError)
-                    return
-                }
-                comment.Text = fromNullString(text)
-
-                comments = append(comments, comment)
-            }
-        } else {
-            w.WriteHeader(http.StatusBadRequest)
+        comments, err := getStoryComments(storyID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
             return
         }
 

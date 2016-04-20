@@ -66,6 +66,40 @@ func userExists(user *User, fetch bool) (bool, *User) {
 	}
 }
 
+func getUserByID(userID int64) (User, error) {
+    var user User
+    var firstname, lastname, description, email, password, facebookID, instagramID, twitterID, imageURL sql.NullString
+
+    if err := db.QueryRow(GET_USER_BY_ID_SQL, userID).Scan(
+        &user.ID,
+        &firstname,
+        &lastname,
+        &description,
+        &email,
+        &password,
+        &facebookID,
+        &instagramID,
+        &twitterID,
+        &imageURL,
+        &user.CreatedAt,
+        &user.UpdatedAt,
+    ); err != nil {
+        return user, err
+    }
+
+    user.Firstname = fromNullString(firstname)
+    user.Lastname = fromNullString(lastname)
+    user.Description = fromNullString(description)
+    user.Email = fromNullString(email)
+    user.Password = fromNullString(password)
+    user.FacebookID = fromNullString(facebookID)
+    user.InstagramID = fromNullString(instagramID)
+    user.TwitterID = fromNullString(twitterID)
+    user.ImageURL = fromNullString(imageURL)
+
+    return user, nil
+}
+
 func insertUser(user *User) error {
 	_, err := db.Exec(
 		INSERT_USER_SQL,
