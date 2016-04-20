@@ -95,13 +95,6 @@ CREATE TABLE comment (
 	FOREIGN KEY(user_id) REFERENCES "user" (id)
 )`
 
-const CREATE_LIKE_TABLE_SQL = `
-CREATE TABLE "like" (
-    id bigserial primary key,
-    user_id bigserial not null,
-	FOREIGN KEY(user_id) REFERENCES "user" (id)
-)`
-
 // User
 const INSERT_USER_SQL = `
 INSERT INTO "user" (firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
@@ -135,7 +128,11 @@ UPDATE "user" SET twitter_id = $1 WHERE id = $2`
 
 const GET_USER_SQL = `
 SELECT id, firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
-WHERE id = $1 OR email = $2 OR facebook_id = $3 OR instagram_id = $4 OR twitter_id = $5
+WHERE id = $1
+OR (email = $2 AND email != '')
+OR (facebook_id = $3 AND facebook_id != '')
+OR (instagram_id = $4 AND instagram_id != '')
+OR (twitter_id = $5 AND twitter_id != '')
 LIMIT 1`
 
 const GET_USER_BY_ID_SQL = `
@@ -285,12 +282,6 @@ VALUES ($1, $2, $3, NOW(), NOW())
 RETURNING id`
 
 // Like
-const GET_HOOP_LIKES_SQL = `
-SELECT user_id, hoop_id, created_at, updated_at FROM "like"`
-
-const GET_STORY_LIKES_SQL = `
-SELECT user_id, story_id, created_at, updated_at FROM "like"`
-
 const COUNT_HOOP_LIKES_SQL = `
 SELECT COUNT(id) FROM activity WHERE hoop_id = $1 AND type = 202`
 
@@ -302,13 +293,3 @@ SELECT COUNT(id) FROM activity WHERE user_id = $1 AND type = $2 AND hoop_id = $3
 
 const COUNT_STORY_ACTIVITY_BY_USER_SQL = `
 SELECT COUNT(id) FROM activity WHERE user_id = $1 AND type = $2 AND story_id = $3`
-
-const INSERT_HOOP_LIKE_SQL = `
-INSERT INTO "like" (user_id, created_at, updated_at)
-VALUES ($1, NOW(), NOW())
-RETURNING id`
-
-const INSERT_STORY_LIKE_SQL = `
-INSERT INTO "like" (user_id, created_at, updated_at)
-VALUES ($1, NOW(), NOW())
-RETURNING id`

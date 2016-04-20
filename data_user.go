@@ -135,8 +135,10 @@ func getUserByID(userID int64) (User, error) {
     return user, nil
 }
 
-func insertUser(user *User) error {
-	_, err := db.Exec(
+func insertUser(user *User) (int64, error) {
+    var userID int64
+
+	if err := db.QueryRow(
 		INSERT_USER_SQL,
 		&user.Firstname,
 		&user.Lastname,
@@ -147,8 +149,11 @@ func insertUser(user *User) error {
 		&user.InstagramID,
 		&user.TwitterID,
 		&user.ImageURL,
-	)
-	return err
+	).Scan(&userID); err != nil && err != sql.ErrNoRows {
+        return 0, err
+    }
+
+	return userID, nil
 }
 
 func updateUser(user *User) (err error) {

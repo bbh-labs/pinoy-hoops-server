@@ -103,11 +103,6 @@ func main() {
             log.Fatal(err)
         }
     }
-    if _, err := db.Exec(CREATE_LIKE_TABLE_SQL); err != nil {
-        if err := err.(*pq.Error); err.Code != "42P07" {
-            log.Fatal(err)
-        }
-    }
     if _, err := db.Exec(CREATE_ACTIVITY_TABLE_SQL); err != nil {
         if err := err.(*pq.Error); err.Code != "42P07" {
             log.Fatal(err)
@@ -241,7 +236,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
     user.Email = authuser.Email
     user.ImageURL = authuser.AvatarURL
 
-    if err := insertUser(user); err != nil {
+    if user.ID, err = insertUser(user); err != nil {
         log.Println(err)
         w.WriteHeader(http.StatusInternalServerError)
         return
@@ -283,6 +278,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
             w.Write([]byte("Password is too short"))
             return
         }
+
 
         user := &User{Email: email}
         if exists, user := userExists(user, true); exists {
@@ -346,13 +342,13 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             ImageURL:  imageURL,
         }
 
-        if err := insertUser(user); err != nil {
+        if user.ID, err = insertUser(user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
         }
 
-        if err := logIn(w, r, user); err != nil {
+        if err = logIn(w, r, user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
@@ -959,90 +955,6 @@ func storyCommentsHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func likesHandler(w http.ResponseWriter, r *http.Request) {
-    switch r.Method {
-    case "GET":
-        var likes []Like
-
-        hoopID := r.FormValue("hoop-id")
-        if hoopID != "" {
-            hoopID, err := strconv.ParseInt(hoopID, 10, 64)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            rows, err := db.Query(GET_HOOP_LIKES_SQL, hoopID)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            for rows.Next() {
-                var like Like
-
-                if err := rows.Scan(
-                    &like.UserID,
-                    &like.CreatedAt,
-                    &like.UpdatedAt,
-                ); err != nil {
-                    log.Println(err)
-                    w.WriteHeader(http.StatusInternalServerError)
-                    return
-                }
-
-                likes = append(likes, like)
-            }
-        } else if storyID := r.FormValue("story-id"); storyID != "" {
-            storyID, err := strconv.ParseInt(storyID, 10, 64)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            rows, err := db.Query(GET_STORY_LIKES_SQL, storyID)
-            if err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            for rows.Next() {
-                var like Like
-
-                if err := rows.Scan(
-                    &like.UserID,
-                    &like.CreatedAt,
-                    &like.UpdatedAt,
-                ); err != nil {
-                    log.Println(err)
-                    w.WriteHeader(http.StatusInternalServerError)
-                    return
-                }
-
-                likes = append(likes, like)
-            }
-        } else {
-            w.WriteHeader(http.StatusBadRequest)
-            return
-        }
-
-        data, err := json.Marshal(likes)
-        if err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        w.Write(data)
-    default:
-        w.WriteHeader(http.StatusMethodNotAllowed)
-    }
-}
-
 func hoopLikesHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
@@ -1375,6 +1287,9 @@ func copyFile(r *http.Request, name string, folder, filename string) (destinatio
     var fileheader *multipart.FileHeader
 
     if _, fileheader, err = r.FormFile("image"); err != nil {
+        if err == http.ErrMissingFile {
+            err = nil
+        }
         return
     } else {
         var infile multipart.File
@@ -1416,7 +1331,7 @@ func randomFilename() string {
     }
 
     for i := range output {
-        if output[i] == '/' {
+        if output[i] == '/' || output[i] == '\n'{
             output[i] = '-'
         }
     }
