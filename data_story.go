@@ -97,3 +97,28 @@ func getStories(query string, hoopID int64) ([]Story, error) {
 
     return stories, nil
 }
+
+func insertStory(hoopID, userID int64, name, description, imageURL string) error {
+    var storyID int64
+
+    tx, err := db.Begin()
+    if err != nil {
+        return err
+    }
+
+    // Insert Story
+    if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, imageURL).Scan(&storyID); err != nil {
+        return err
+    }
+
+    // Insert Activity
+    if _, err := tx.Exec(INSERT_POST_STORY_ACTIVITY_SQL, userID, ACTIVITY_POST_STORY, storyID); err != nil {
+        return err
+    }
+
+    if err := tx.Commit(); err != nil {
+        return err
+    }
+
+    return nil
+}

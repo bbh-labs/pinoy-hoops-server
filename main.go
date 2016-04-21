@@ -476,46 +476,7 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
         name := r.FormValue("name")
         description := r.FormValue("description")
 
-        // Start Transaction
-        tx, err := db.Begin()
-        if err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        var hoopID, storyID int64
-
-        // Insert Hoop
-        if err := tx.QueryRow(INSERT_HOOP_SQL, user.ID, name, description, latitude, longitude).Scan(&hoopID); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        // Insert Story
-        if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL).Scan(&storyID); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        // Insert HoopFeaturedStory
-        if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        // Insert Activity
-        if _, err := tx.Exec(INSERT_POST_HOOP_ACTIVITY_SQL, user.ID, ACTIVITY_POST_HOOP, hoopID); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        // End Transaction
-        if err := tx.Commit(); err != nil {
+        if err := insertHoop(user.ID, name, description, imageURL, latitude, longitude); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
@@ -530,41 +491,11 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 func hoopsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        var hoops []Hoop
-        var rows *sql.Rows
-        var err error
-
-        if name := r.FormValue("name"); name != "" {
-            rows, err = db.Query(GET_HOOPS_WITH_NAME_SQL, "%"+name+"%")
-        } else {
-            rows, err = db.Query(GET_HOOPS_SQL)
-        }
-
+        hoops, err := getHoops(r.FormValue("name"))
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
-        }
-
-        for rows.Next() {
-            var hoop Hoop
-
-            if err := rows.Scan(
-                &hoop.ID,
-                &hoop.UserID,
-                &hoop.Name,
-                &hoop.Description,
-                &hoop.Latitude,
-                &hoop.Longitude,
-                &hoop.CreatedAt,
-                &hoop.UpdatedAt,
-            ); err != nil {
-                log.Println(err)
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-            }
-
-            hoops = append(hoops, hoop)
         }
 
         data, err := json.Marshal(hoops)
@@ -609,30 +540,7 @@ func storyHandler(w http.ResponseWriter, r *http.Request) {
         name := r.FormValue("name")
         description := r.FormValue("description")
 
-        tx, err := db.Begin()
-        if err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        var storyID int64
-
-        // Insert Story
-        if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, user.ID, name, description, imageURL).Scan(&storyID); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        // Insert Activity
-        if _, err := tx.Exec(INSERT_POST_STORY_ACTIVITY_SQL, user.ID, ACTIVITY_POST_STORY, storyID); err != nil {
-            log.Println("test", err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
-        }
-
-        if err := tx.Commit(); err != nil {
+        if err := insertStory(hoopID, user.ID, name, description, imageURL); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
