@@ -14,10 +14,8 @@ func loggedIn(w http.ResponseWriter, r *http.Request, fetchUser bool) (bool, *Us
 
 	val := session.Values["userID"]
 	if userID, ok := val.(int64); !ok {
-		log.Println("Failed to get user from session")
 		return false, nil
 	} else if exists, user := userExists(&User{ID: userID}, fetchUser); !exists {
-		log.Println("User doesn't exist")
 		return false, nil
 	} else {
 		return true, user

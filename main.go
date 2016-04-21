@@ -221,7 +221,9 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         if err := logIn(w, r, user); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
+            return
         }
+        http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
         return
     }
 
