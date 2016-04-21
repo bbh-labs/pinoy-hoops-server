@@ -184,7 +184,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
                 return
             }
         case "instagram":
-            if _, err := db.Exec(UPDATE_USER_INSTAGRAM_SQL, authuser.UserID, user.ID); err != nil {
+            if _, err := db.Exec(UPDATE_USER_INSTAGRAM_SQL, authuser.NickName, user.ID); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
