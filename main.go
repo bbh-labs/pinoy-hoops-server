@@ -149,6 +149,7 @@ func main() {
     apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
     apiRouter.HandleFunc("/story/likes", storyLikesHandler)
     apiRouter.HandleFunc("/story/comments", storyCommentsHandler)
+    apiRouter.HandleFunc("/stories/mostcommented", mostCommentedStoriesHandler)
     apiRouter.HandleFunc("/stories/mostliked", mostLikedStoriesHandler)
     apiRouter.HandleFunc("/stories/mostviewed", mostViewedStoriesHandler)
     apiRouter.HandleFunc("/stories/latest", latestStoriesHandler)
@@ -736,21 +737,21 @@ func commentHoopHandler(w http.ResponseWriter, r *http.Request) {
 
 func commentStoryHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
-    case "POST":
+    case "PATCH":
         ok, user := loggedIn(w, r, true)
         if !ok {
             w.WriteHeader(http.StatusForbidden)
             return
         }
 
-        text := r.FormValue("text")
-        if len(text) < 2 {
+        storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64)
+        if err != nil {
             w.WriteHeader(http.StatusBadRequest)
             return
         }
 
-        storyID, err := strconv.ParseInt(r.FormValue("story-id"), 10, 64)
-        if err != nil {
+        text := r.FormValue("text")
+        if len(text) < 2 {
             w.WriteHeader(http.StatusBadRequest)
             return
         }
@@ -1137,6 +1138,35 @@ func latestHoopsHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         data, err := json.Marshal(hoops)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func mostCommentedStoriesHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        hoopID, err := strconv.ParseInt(r.FormValue("hoop_id"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        stories, err := getStories(GET_MOST_COMMENTED_STORIES_SQL, hoopID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        data, err := json.Marshal(stories)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)

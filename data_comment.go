@@ -82,8 +82,8 @@ func getHoopComments(hoopID int64) ([]Comment, error) {
 
         if err := rows.Scan(
             &comment.UserID,
-            &comment.HoopID,
             &text,
+            &comment.HoopID,
             &comment.CreatedAt,
             &comment.UpdatedAt,
         ); err != nil {
@@ -120,8 +120,8 @@ func getStoryComments(storyID int64) ([]Comment, error) {
 
         if err := rows.Scan(
             &comment.UserID,
-            &comment.StoryID,
             &text,
+            &comment.StoryID,
             &comment.CreatedAt,
             &comment.UpdatedAt,
         ); err != nil {

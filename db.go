@@ -208,11 +208,17 @@ SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_a
 FROM story
 WHERE hoop_id = $1`
 
+const GET_MOST_COMMENTED_STORIES_SQL = `
+SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
+FROM story
+WHERE hoop_id = $1
+ORDER BY (SELECT COUNT(id) FROM activity WHERE type = 102 AND story_id = story.id) DESC`
+
 const GET_MOST_LIKED_STORIES_SQL = `
 SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
 FROM story
 WHERE hoop_id = $1
-ORDER BY (SELECT COUNT(id) FROM activity WHERE type = 202) DESC`
+ORDER BY (SELECT COUNT(id) FROM activity WHERE type = 202 AND story_id = story.id) DESC`
 
 const GET_LATEST_STORIES_SQL = `
 SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
@@ -265,11 +271,13 @@ DELETE FROM activity WHERE user_id = $1 AND type = $2 AND story_id = $3`
 // Comment
 const GET_HOOP_COMMENTS_SQL = `
 SELECT user_id, text, hoop_id, created_at, updated_at FROM comment
-WHERE hoop_id = $1`
+WHERE hoop_id = $1
+ORDER BY created_at DESC`
 
 const GET_STORY_COMMENTS_SQL = `
 SELECT user_id, text, story_id, created_at, updated_at FROM comment
-WHERE story_id = $1`
+WHERE story_id = $1
+ORDER BY created_at DESC`
 
 const INSERT_HOOP_COMMENT_SQL = `
 INSERT INTO comment (user_id, text, hoop_id, created_at, updated_at)
