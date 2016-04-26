@@ -39,6 +39,7 @@ var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/m
 // Command-line flags
 var dbhost = flag.String("dbhost", "localhost", "database host")
 var dbport = flag.String("dbport", "5432", "database port")
+var dbpass = flag.String("dbpass", "", "database password")
 var address = flag.String("address", "http://localhost:8080", "server address")
 var port = flag.String("port", "8080", "server port")
 
@@ -69,7 +70,7 @@ func main() {
     flag.Parse()
 
     // Connect to database
-    if db, err = sql.Open("postgres", "user=postgres dbname=postgres sslmode=disable host="+*dbhost+" port="+*dbport); err != nil {
+    if db, err = sql.Open("postgres", "user=postgres dbname=postgres sslmode=disable host="+*dbhost+" port="+*dbport + " password="+*dbpass); err != nil {
         log.Fatal(err)
     }
 
