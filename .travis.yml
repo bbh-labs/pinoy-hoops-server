@@ -1,0 +1,13 @@
+language: go
+
+go:
+  - 1.5
+  - tip
+
+services:
+    - postgresql
+    - redis-server
+
+install:
+  - go get
+  - go build
