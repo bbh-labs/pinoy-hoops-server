@@ -98,7 +98,9 @@ CREATE TABLE comment (
 // User
 const INSERT_USER_SQL = `
 INSERT INTO "user" (firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) ON CONFLICT (email, facebook_id, instagram_id, twitter_id) DO NOTHING
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+ON CONFLICT (email, facebook_id, instagram_id, twitter_id)
+DO NOTHING
 RETURNING id`
 
 const UPDATE_USER_SQL = `
