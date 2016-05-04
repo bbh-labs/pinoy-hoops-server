@@ -372,7 +372,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             http.Error(w, ErrNotLoggedIn.Error(), http.StatusForbidden)
             return
         }
-        
+
         // Set user firstname and lastname
         user.Firstname = r.FormValue("firstname")
         user.Lastname = r.FormValue("lastname")
