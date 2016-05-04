@@ -204,7 +204,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    user := &User{}
+    user := &User{Email: authuser.Email}
 
     switch authuser.Provider {
     case "facebook":
