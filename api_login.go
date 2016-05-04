@@ -6,7 +6,7 @@ import (
 )
 
 func loggedIn(w http.ResponseWriter, r *http.Request, fetchUser bool) (bool, *User) {
-	session, err := ss.Get(r, "session")
+	session, err := ss.Get(r, "pinoyHoopsSession")
 	if err != nil {
 		log.Println(err)
 		return false, nil
@@ -23,7 +23,7 @@ func loggedIn(w http.ResponseWriter, r *http.Request, fetchUser bool) (bool, *Us
 }
 
 func logIn(w http.ResponseWriter, r *http.Request, user *User) error {
-	session, err := ss.Get(r, "session")
+	session, err := ss.Get(r, "pinoyHoopsSession")
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func logIn(w http.ResponseWriter, r *http.Request, user *User) error {
 }
 
 func logOut(w http.ResponseWriter, r *http.Request) error {
-	session, err := ss.Get(r, "session")
+	session, err := ss.Get(r, "pinoyHoopsSession")
 	if err != nil {
 		return err
 	}
