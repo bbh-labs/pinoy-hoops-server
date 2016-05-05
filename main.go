@@ -10,6 +10,7 @@ import (
     "log"
     "mime/multipart"
     "net/http"
+    "path/filepath"
     "os"
     "os/exec"
     "os/signal"
@@ -40,6 +41,8 @@ var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/m
 var dbhost = flag.String("dbhost", "localhost", "database host")
 var dbport = flag.String("dbport", "5432", "database port")
 var dbpass = flag.String("dbpass", "", "database password")
+var cachehost = flag.String("cachehost", "", "cache host")
+var cacheport = flag.String("cacheport", "6379", "cache port")
 var address = flag.String("address", "http://localhost:8080", "server address")
 var port = flag.String("port", "8080", "server port")
 
@@ -53,7 +56,8 @@ var (
 
 // Constants
 const (
-    ContentDir = "public/content"
+    PublicDir = "public"
+    ContentDir = PublicDir + "/content"
 )
 
 func main() {
@@ -84,7 +88,7 @@ func main() {
     }
 
     // Connect to Redis
-    if red, err = redis.Dial("tcp", ":6379"); err != nil {
+    if red, err = redis.Dial("tcp", *cachehost + ":" + *cacheport); err != nil {
         log.Fatal(err)
     }
 
@@ -1261,6 +1265,10 @@ func copyFile(r *http.Request, name string, folder, filename string) (destinatio
 
         // Copy file to destination
         if _, err = io.Copy(outfile, infile); err != nil {
+            return
+        }
+
+        if destination, err = filepath.Rel(PublicDir, destination); err != nil {
             return
         }
     }
