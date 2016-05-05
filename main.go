@@ -51,6 +51,11 @@ var (
     ErrPasswordMismatch = errors.New("Password mismatch")
 )
 
+// Constants
+const (
+    ContentDir = "public/content"
+)
+
 func main() {
     var err error
 
@@ -323,7 +328,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         lastname := r.FormValue("lastname")
 
         imageURL := ""
-        if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
+        if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
@@ -403,7 +408,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
             } else if len(oldPassword) > 0 && len(newPassword) > 0 {
                 w.WriteHeader(http.StatusBadRequest)
                 return
-            
+
             // Ignore input (at least one of the two passwords is empty)
             } else {
                 user.Password = ""
@@ -411,7 +416,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         // Update user avatar if necessary
-        if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
+        if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
@@ -455,7 +460,7 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 
         imageURL := r.FormValue("image_url")
         if imageURL == "" {
-            if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
+            if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
@@ -531,7 +536,7 @@ func storyHandler(w http.ResponseWriter, r *http.Request) {
 
         imageURL := r.FormValue("image_url")
         if imageURL == "" {
-            if destination, err := copyFile(r, "image", "content", randomFilename()); err != nil {
+            if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
