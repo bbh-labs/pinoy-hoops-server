@@ -10,6 +10,8 @@ type Story struct {
 	ID          int64     `json:"id"`
 	HoopID      int64     `json:"hoop_id"`
 	UserID      int64     `json:"user_id"`
+	Hoop        Hoop      `json:"hoop"`
+	User        User      `json:"user"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	ImageURL    string    `json:"image_url"`
@@ -65,6 +67,52 @@ func storyExists(story *Story, fetch bool) (bool, *Story) {
 		}
 		return true, nil
 	}
+}
+
+func getStory(storyID int64) (story Story, err error) {
+    if err = db.QueryRow(GET_STORY_SQL, storyID).Scan(
+        &story.ID,
+        &story.HoopID,
+        &story.UserID,
+        &story.Name,
+        &story.Description,
+        &story.ImageURL,
+        &story.CreatedAt,
+        &story.UpdatedAt,
+    ); err != nil {
+        return
+    }
+
+    if story.Hoop, err = getHoop(story.HoopID); err != nil {
+        return
+    }
+
+    if story.User, err = getUserByID(story.UserID); err != nil {
+        return
+    }
+
+    return
+}
+
+func getFeaturedStory(hoopID int64) (story Story, err error) {
+    if err = db.QueryRow(GET_FEATURED_STORY_SQL, hoopID).Scan(
+        &story.ID,
+        &story.HoopID,
+        &story.UserID,
+        &story.Name,
+        &story.Description,
+        &story.ImageURL,
+        &story.CreatedAt,
+        &story.UpdatedAt,
+    ); err != nil {
+        return
+    }
+
+    if story.User, err = getUserByID(story.UserID); err != nil {
+        return
+    }
+
+    return
 }
 
 func getStories(query string, hoopID int64) ([]Story, error) {

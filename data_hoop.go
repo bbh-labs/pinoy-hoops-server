@@ -7,67 +7,80 @@ import (
 )
 
 type Hoop struct {
-	ID          int64     `json:"id"`
-	UserID      int64     `json:"user_id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Latitude    float64   `json:"latitude"`
-	Longitude   float64   `json:"longitude"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID            int64                  `json:"id"`
+	UserID        int64                  `json:"user_id"`
+	User          User                   `json:"user"`
+	Name          string                 `json:"name"`
+	Description   string                 `json:"description"`
+	Latitude      float64                `json:"latitude"`
+	Longitude     float64                `json:"longitude"`
+	CreatedAt     time.Time              `json:"created_at"`
+	UpdatedAt     time.Time              `json:"updated_at"`
+    Data          map[string]interface{} `json:"data,omitempty"`
 }
 
 func hoopExists(hoop *Hoop, fetch bool) (bool, *Hoop) {
 	if fetch {
-		var name, description sql.NullString
-
-		if err := db.QueryRow(GET_HOOP_SQL, hoop.ID).Scan(
-			&hoop.ID,
-			&hoop.UserID,
-			&name,
-			&description,
-			&hoop.Latitude,
-			&hoop.Longitude,
-			&hoop.CreatedAt,
-			&hoop.UpdatedAt,
-		); err != nil {
+        if newHoop, err := getHoop(hoop.ID); err != nil {
 			log.Println(err)
 			return false, nil
-		}
-
-		hoop.Name = fromNullString(name)
-		hoop.Description = fromNullString(description)
+        } else {
+            *hoop = newHoop
+        }
 
 		return true, hoop
 	} else {
 		count := 0
+
 		if err := db.QueryRow(COUNT_HOOP_SQL, hoop.ID).Scan(&count); err != nil || count == 0 {
 			log.Println(err)
 			return false, nil
 		}
+
 		return true, nil
 	}
 }
 
-func getHoops(name string) ([]Hoop, error) {
-    var hoops []Hoop
-    var rows *sql.Rows
-    var err error
-
-    if name != "" {
-        rows, err = db.Query(GET_HOOPS_WITH_NAME_SQL, "%"+name+"%")
-    } else {
-        rows, err = db.Query(GET_HOOPS_SQL)
+func getHoop(hoopID int64) (hoop Hoop, err error) {
+    if err = db.QueryRow(GET_HOOP_SQL, hoopID).Scan(
+        &hoop.ID,
+        &hoop.UserID,
+        &hoop.Name,
+        &hoop.Description,
+        &hoop.Latitude,
+        &hoop.Longitude,
+        &hoop.CreatedAt,
+        &hoop.UpdatedAt,
+    ); err != nil {
+        return
     }
 
-    if err != nil {
-        return nil, err
+    if hoop.User, err = getUserByID(hoop.UserID); err != nil {
+        return
+    }
+
+    var featuredStory Story
+    if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
+        return
+    } else {
+        hoop.Data = map[string]interface{}{}
+        hoop.Data["featured_story"] = featuredStory
+    }
+
+    return
+}
+
+func getHoops(query string, args ...interface{}) (hoops []Hoop, err error) {
+    var rows *sql.Rows
+
+    if rows, err = db.Query(query, args...); err != nil {
+        return
     }
 
     for rows.Next() {
         var hoop Hoop
 
-        if err := rows.Scan(
+        if err = rows.Scan(
             &hoop.ID,
             &hoop.UserID,
             &hoop.Name,
@@ -77,13 +90,25 @@ func getHoops(name string) ([]Hoop, error) {
             &hoop.CreatedAt,
             &hoop.UpdatedAt,
         ); err != nil {
-            return nil, err
+            return
+        }
+
+        if hoop.User, err = getUserByID(hoop.UserID); err != nil {
+            return
+        }
+
+        var featuredStory Story
+        if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
+            return
+        } else {
+            hoop.Data = map[string]interface{}{}
+            hoop.Data["featured_story"] = featuredStory
         }
 
         hoops = append(hoops, hoop)
     }
 
-    return hoops, nil
+    return
 }
 
 func insertHoop(userID int64, name, description, imageURL string, latitude, longitude float64) error {

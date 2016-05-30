@@ -23,6 +23,8 @@ CREATE TABLE "user" (
 	id bigserial PRIMARY KEY,
 	firstname varchar(255),
 	lastname varchar(255),
+	gender varchar(6),
+	birthdate varchar(16),
 	description varchar(500),
 	email varchar(255),
 	password varchar(60),
@@ -97,8 +99,8 @@ CREATE TABLE comment (
 
 // User
 const INSERT_USER_SQL = `
-INSERT INTO "user" (firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+INSERT INTO "user" (firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
 ON CONFLICT (email, facebook_id, instagram_id, twitter_id)
 DO NOTHING
 RETURNING id`
@@ -128,8 +130,11 @@ UPDATE "user" SET instagram_id = $1 WHERE id = $2`
 const UPDATE_USER_TWITTER_SQL = `
 UPDATE "user" SET twitter_id = $1 WHERE id = $2`
 
+const UPDATE_USER_IMAGE_SQL = `
+UPDATE "user" SET image_url = $1 WHERE id = $2`
+
 const GET_USER_SQL = `
-SELECT id, firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
+SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
 WHERE id = $1
 OR (email = $2 AND email != '')
 OR (facebook_id = $3 AND facebook_id != '')
@@ -138,7 +143,7 @@ OR (twitter_id = $5 AND twitter_id != '')
 LIMIT 1`
 
 const GET_USER_BY_ID_SQL = `
-SELECT id, firstname, lastname, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
+SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
 WHERE id = $1
 LIMIT 1`
 
@@ -166,6 +171,16 @@ LIMIT 1`
 const GET_HOOPS_SQL = `
 SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
 FROM hoop`
+
+const GET_MY_HOOPS_SQL = `
+SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
+FROM hoop
+WHERE user_id = $1`
+
+const GET_OTHER_HOOPS_SQL = `
+SELECT id, user_id, name, description, latitude, longitude, created_at, updated_at
+FROM hoop
+WHERE user_id != $1`
 
 const DISTANCE_CALC = `(acos(sin(radians(h.latitude)) * sin(radians($1)) + cos(radians(h.latitude)) * cos(radians($2)) * cos(radians(h.longitude - $3))) * 6371 * 1000)`
 
@@ -198,6 +213,11 @@ RETURNING id`
 const GET_STORY_SQL = `
 SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at FROM story
 WHERE id = $1
+LIMIT 1`
+
+const GET_FEATURED_STORY_SQL = `
+SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at FROM story
+WHERE hoop_id = $1
 LIMIT 1`
 
 const COUNT_STORY_SQL = `

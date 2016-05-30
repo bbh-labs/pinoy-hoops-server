@@ -11,6 +11,7 @@ type Comment struct {
 	UserID    int64                  `json:"user_id"`
 	HoopID    int64                  `json:"hoop_id,omitempty"`
 	StoryID   int64                  `json:"story_id,omitempty"`
+	User      User                   `json:"user"`
 	Text      string                 `json:"text"`
 	CreatedAt time.Time              `json:"created_at"`
 	UpdatedAt time.Time              `json:"updated_at"`
@@ -129,13 +130,9 @@ func getStoryComments(storyID int64) ([]Comment, error) {
         }
         comment.Text = fromNullString(text)
 
-        user, err := getUserByID(comment.UserID)
-        if err != nil {
-            log.Println(err)
-            continue
+        if comment.User, err = getUserByID(comment.UserID); err != nil {
+            return nil, err
         }
-        comment.Data = make(map[string]interface{})
-        comment.Data["user"] = user
 
         comments = append(comments, comment)
     }

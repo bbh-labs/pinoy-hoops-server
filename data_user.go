@@ -13,6 +13,8 @@ type User struct {
 	ID          int64                 `json:"id"`
 	Firstname   string                `json:"firstname,omitempty"`
 	Lastname    string                `json:"lastname,omitempty"`
+	Gender      string                `json:"gender,omitempty"`
+	Birthdate   string                `json:"birthdate,omitempty"`
 	Description string                `json:"description,omitempty"`
 	Email       string                `json:"email,omitempty"`
 	Password    string                `json:"-"`
@@ -23,6 +25,11 @@ type User struct {
 	CreatedAt   time.Time             `json:"created_at"`
 	UpdatedAt   time.Time             `json:"updated_at"`
     LatestActivityCheckTime time.Time `json:"latest_activity_check_time,omitempty"`
+}
+
+func (user *User) updateUserImage(imageURL string) (err error) {
+    _, err = db.Exec(UPDATE_USER_IMAGE_SQL, imageURL, user.ID)
+    return
 }
 
 func (user *User) lastActivityCheckTime() (time.Time, error) {
@@ -49,12 +56,14 @@ func userExists(user *User, fetch bool) (bool, *User) {
     var err error
 
 	if fetch {
-		var firstname, lastname, description, email, password, facebookID, instagramID, twitterID, imageURL sql.NullString
+		var firstname, lastname, gender, birthdate, description, email, password, facebookID, instagramID, twitterID, imageURL sql.NullString
 
 		if err = db.QueryRow(GET_USER_SQL, user.ID, user.Email, user.FacebookID, user.InstagramID, user.TwitterID).Scan(
 			&user.ID,
 			&firstname,
 			&lastname,
+			&gender,
+			&birthdate,
 			&description,
 			&email,
 			&password,
@@ -73,6 +82,8 @@ func userExists(user *User, fetch bool) (bool, *User) {
 
 		user.Firstname = fromNullString(firstname)
 		user.Lastname = fromNullString(lastname)
+		user.Gender = fromNullString(gender)
+		user.Birthdate = fromNullString(birthdate)
 		user.Description = fromNullString(description)
 		user.Email = fromNullString(email)
 		user.Password = fromNullString(password)
@@ -98,13 +109,15 @@ func userExists(user *User, fetch bool) (bool, *User) {
 
 func getUserByID(userID int64) (User, error) {
     var user User
-    var firstname, lastname, description, email, password, facebookID, instagramID, twitterID, imageURL sql.NullString
+    var firstname, lastname, gender, birthdate, description, email, password, facebookID, instagramID, twitterID, imageURL sql.NullString
     var err error
 
     if err = db.QueryRow(GET_USER_BY_ID_SQL, userID).Scan(
         &user.ID,
         &firstname,
         &lastname,
+        &gender,
+        &birthdate,
         &description,
         &email,
         &password,
@@ -120,6 +133,8 @@ func getUserByID(userID int64) (User, error) {
 
     user.Firstname = fromNullString(firstname)
     user.Lastname = fromNullString(lastname)
+    user.Gender = fromNullString(gender)
+    user.Birthdate = fromNullString(birthdate)
     user.Description = fromNullString(description)
     user.Email = fromNullString(email)
     user.Password = fromNullString(password)
@@ -142,6 +157,8 @@ func insertUser(user *User) (int64, error) {
 		INSERT_USER_SQL,
 		&user.Firstname,
 		&user.Lastname,
+		&user.Gender,
+		&user.Birthdate,
 		&user.Description,
 		&user.Email,
 		&user.Password,

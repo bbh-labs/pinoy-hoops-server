@@ -18,6 +18,7 @@ import (
     "strconv"
     "strings"
     "syscall"
+    "time"
 
     "github.com/codegangsta/negroni"
     "github.com/garyburd/redigo/redis"
@@ -52,12 +53,16 @@ var (
     ErrPasswordTooShort = errors.New("Password too short")
     ErrNotLoggedIn      = errors.New("User is not logged in")
     ErrPasswordMismatch = errors.New("Password mismatch")
+    ErrInvalidGender    = errors.New("Invalid gender")
+    ErrInvalidDateFormat    = errors.New("Invalid date format")
 )
 
 // Constants
 const (
     PublicDir = "public"
     ContentDir = PublicDir + "/content"
+
+    DateFormat = "2006-01-02"
 )
 
 func main() {
@@ -152,6 +157,9 @@ func main() {
     apiRouter.HandleFunc("/view/story", viewStoryHandler)
 
     // Prepare extra handlers
+    apiRouter.HandleFunc("/user/image", userImageHandler)
+    apiRouter.HandleFunc("/user/myhoops", userMyHoopsHandler)
+    apiRouter.HandleFunc("/user/otherhoops", userOtherHoopsHandler)
     apiRouter.HandleFunc("/hoop/comments", hoopCommentsHandler)
     apiRouter.HandleFunc("/hoop/likes", hoopLikesHandler)
     apiRouter.HandleFunc("/hoops/nearby", nearbyHoopsHandler)
@@ -170,6 +178,10 @@ func main() {
     patHandler.Get("/auth/{provider}/callback", authHandler)
     patHandler.Get("/auth/{provider}", gothic.BeginAuthHandler)
     router.PathPrefix("/auth").Handler(patHandler)
+
+    router.HandleFunc("/{login|signup}", func(w http.ResponseWriter, r *http.Request) {
+        http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+    })
 
     // Run web server
     n := negroni.Classic()
@@ -328,6 +340,18 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
 
+        gender := r.FormValue("gender")
+        if !(gender == "male" || gender == "female") {
+            http.Error(w, ErrInvalidGender.Error(), http.StatusBadRequest)
+            return
+        }
+
+        if _, err := time.Parse(DateFormat, r.FormValue("birthdate")); err != nil {
+            http.Error(w, ErrInvalidDateFormat.Error(), http.StatusBadRequest)
+            return
+        }
+        birthdate := r.FormValue("birthdate")
+
         firstname := r.FormValue("firstname")
         lastname := r.FormValue("lastname")
 
@@ -350,6 +374,8 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         user := &User{
             Firstname: firstname,
             Lastname:  lastname,
+            Gender:    gender,
+            Birthdate: birthdate,
             Email:     email,
             Password:  string(hashedPassword),
             ImageURL:  imageURL,
@@ -455,6 +481,35 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 
 func hoopHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
+    case "GET":
+        ok, _ := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        hoopID, err := strconv.ParseInt(r.FormValue("hoopID"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        hoop, err := getHoop(hoopID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        data, err := json.Marshal(hoop)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+
     case "POST":
         ok, user := loggedIn(w, r, true)
         if !ok {
@@ -503,14 +558,22 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 func hoopsHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
     case "GET":
-        hoops, err := getHoops(r.FormValue("name"))
+        var hoops []Hoop
+        var data []byte
+        var err error
+
+        if name := r.FormValue("name"); name != "" {
+            hoops, err = getHoops(GET_HOOPS_WITH_NAME_SQL, name)
+        } else {
+            hoops, err = getHoops(GET_HOOPS_SQL)
+        }
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
             return
         }
 
-        data, err := json.Marshal(hoops)
+        data, err = json.Marshal(hoops)
         if err != nil {
             log.Println(err)
             w.WriteHeader(http.StatusInternalServerError)
@@ -525,6 +588,34 @@ func hoopsHandler(w http.ResponseWriter, r *http.Request) {
 
 func storyHandler(w http.ResponseWriter, r *http.Request) {
     switch r.Method {
+    case "GET":
+        ok, _ := loggedIn(w, r, false)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        storyID, err := strconv.ParseInt(r.FormValue("storyID"), 10, 64)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        story, err := getStory(storyID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        data, err := json.Marshal(story)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
     case "POST":
         ok, user := loggedIn(w, r, true)
         if !ok {
@@ -811,6 +902,96 @@ func viewStoryHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.WriteHeader(http.StatusOK)
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func userImageHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "POST":
+        ok, user := loggedIn(w, r, true)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+        } else if destination == "" {
+            w.WriteHeader(http.StatusBadRequest)
+        } else {
+            user.updateUserImage(destination)
+            w.WriteHeader(http.StatusOK)
+        }
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func userMyHoopsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var hoops []Hoop
+        var data []byte
+        var err error
+
+        ok, user := loggedIn(w, r, true)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        hoops, err = getHoops(GET_MY_HOOPS_SQL, user.ID)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        data, err = json.Marshal(hoops)
+        if err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+
+    default:
+        w.WriteHeader(http.StatusMethodNotAllowed)
+    }
+}
+
+func userOtherHoopsHandler(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case "GET":
+        var hoops []Hoop
+        var data []byte
+        var err error
+
+        ok, user := loggedIn(w, r, true)
+        if !ok {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+
+        if hoops, err = getHoops(GET_OTHER_HOOPS_SQL, user.ID); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        if data, err = json.Marshal(hoops); err != nil {
+            log.Println(err)
+            w.WriteHeader(http.StatusInternalServerError)
+            return
+        }
+
+        w.Write(data)
+
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }

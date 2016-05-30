@@ -28,21 +28,33 @@ func (a *Activity) fetchData() {
 	a.Data = make(map[string]interface{})
 
 	if ok, user := userExists(&User{ID: a.UserID}, true); ok {
-		a.Data["user"] = user
+		a.Data["user"] = *user
 	}
 
 	switch a.Type {
 	case ACTIVITY_POST_HOOP:
 		if ok, hoop := hoopExists(&Hoop{ID: a.HoopID}, true); ok {
-			a.Data["hoop"] = hoop
+			a.Data["hoop"] = *hoop
 		}
 	case ACTIVITY_POST_STORY:
 		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
-			a.Data["story"] = story
+			a.Data["story"] = *story
+		}
+    case ACTIVITY_POST_LIKE_HOOP:
+		if ok, hoop := hoopExists(&Hoop{ID: a.HoopID}, true); ok {
+			a.Data["hoop"] = *hoop
 		}
     case ACTIVITY_POST_LIKE_STORY:
 		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
-			a.Data["story"] = story
+			a.Data["story"] = *story
+		}
+    case ACTIVITY_POST_COMMENT_HOOP:
+		if ok, hoop := hoopExists(&Hoop{ID: a.HoopID}, true); ok {
+			a.Data["hoop"] = *hoop
+		}
+    case ACTIVITY_POST_COMMENT_STORY:
+		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
+			a.Data["story"] = *story
 		}
 	}
 }
