@@ -292,12 +292,12 @@ DELETE FROM activity WHERE user_id = $1 AND type = $2 AND story_id = $3`
 
 // Comment
 const GET_HOOP_COMMENTS_SQL = `
-SELECT user_id, text, hoop_id, created_at, updated_at FROM comment
+SELECT id, user_id, text, hoop_id, created_at, updated_at FROM comment
 WHERE hoop_id = $1
 ORDER BY created_at DESC`
 
 const GET_STORY_COMMENTS_SQL = `
-SELECT user_id, text, story_id, created_at, updated_at FROM comment
+SELECT id, user_id, text, story_id, created_at, updated_at FROM comment
 WHERE story_id = $1
 ORDER BY created_at DESC`
 

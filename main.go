@@ -35,8 +35,21 @@ import (
 )
 
 var db *sql.DB
-var red redis.Conn
 var ss = sessions.NewCookieStore([]byte("SHuADRV4npfjU4stuN5dvcYaMmblSZlUyZbEl/mKyyw="))
+
+// URLs
+var urls = []string {
+    "/about",
+    "/activities",
+    "/add-hoop",
+    "/hoop/{hoop:[0-9]+}",
+    "/login",
+    "/login-email",
+    "/map",
+    "/profile",
+    "/signup",
+    "/story/{storyID:[0-9]+}",
+}
 
 // Command-line flags
 var dbhost = flag.String("dbhost", "localhost", "database host")
@@ -89,11 +102,6 @@ func main() {
     }
 
     if err = db.Ping(); err != nil {
-        log.Fatal(err)
-    }
-
-    // Connect to Redis
-    if red, err = redis.Dial("tcp", *cachehost + ":" + *cacheport); err != nil {
         log.Fatal(err)
     }
 
@@ -179,9 +187,12 @@ func main() {
     patHandler.Get("/auth/{provider}", gothic.BeginAuthHandler)
     router.PathPrefix("/auth").Handler(patHandler)
 
-    router.HandleFunc("/{login|signup}", func(w http.ResponseWriter, r *http.Request) {
-        http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-    })
+    // Serve app urls
+    for _, url := range urls {
+        router.HandleFunc(url, func(w http.ResponseWriter, r *http.Request) {
+            http.ServeFile(w, r, "public/index.html")
+        })
+    }
 
     // Run web server
     n := negroni.Classic()
@@ -1326,6 +1337,13 @@ func mostViewedStoriesHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         for i := range stories {
+            red, err := redisInstance()
+            if err != nil {
+                log.Println(err)
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+            }
+
             if reply, err := red.Do("HGET", fmt.Sprintf("story:%d", stories[i].ID), "view_count"); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
@@ -1472,4 +1490,9 @@ func randomFilename() string {
     }
 
     return string(output)
+}
+
+func redisInstance() (red redis.Conn, err error) {
+    red, err = redis.Dial("tcp", *cachehost + ":" + *cacheport)
+    return
 }

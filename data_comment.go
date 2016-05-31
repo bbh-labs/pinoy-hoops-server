@@ -82,6 +82,7 @@ func getHoopComments(hoopID int64) ([]Comment, error) {
         var comment Comment
 
         if err := rows.Scan(
+            &comment.ID,
             &comment.UserID,
             &text,
             &comment.HoopID,
@@ -120,6 +121,7 @@ func getStoryComments(storyID int64) ([]Comment, error) {
         var comment Comment
 
         if err := rows.Scan(
+            &comment.ID,
             &comment.UserID,
             &text,
             &comment.StoryID,

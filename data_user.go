@@ -33,6 +33,11 @@ func (user *User) updateUserImage(imageURL string) (err error) {
 }
 
 func (user *User) lastActivityCheckTime() (time.Time, error) {
+    red, err := redisInstance()
+    if err != nil {
+        return time.Time{}, err
+    }
+
     if reply, err := red.Do("HGET", fmt.Sprintf("user:%d", user.ID), "lastActivityCheckTime"); err != nil {
         return time.Time{}, err
     } else if t, err := redis.Int64(reply, err); err != nil {
@@ -46,6 +51,11 @@ func (user *User) lastActivityCheckTime() (time.Time, error) {
 }
 
 func (user *User) updateLastActivityCheckTime(secs int64) error {
+    red, err := redisInstance()
+    if err != nil {
+        return err
+    }
+
     if _, err := red.Do("HSET", fmt.Sprintf("user:%d", user.ID), "lastActivityCheckTime", secs); err != nil {
         return err
     }
@@ -196,6 +206,11 @@ func updateUser(user *User) (err error) {
 }
 
 func view(otherID int64, typ string) error {
+    red, err := redisInstance()
+    if err != nil {
+        return err
+    }
+
     if _, err := red.Do("HINCRBY", fmt.Sprintf("%s:%d", typ, otherID), "view_count", 1); err != nil {
         return err
     }
