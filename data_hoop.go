@@ -7,26 +7,26 @@ import (
 )
 
 type Hoop struct {
-	ID            int64                  `json:"id"`
-	UserID        int64                  `json:"user_id"`
-	User          User                   `json:"user"`
-	Name          string                 `json:"name"`
-	Description   string                 `json:"description"`
-	Latitude      float64                `json:"latitude"`
-	Longitude     float64                `json:"longitude"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
-    Data          map[string]interface{} `json:"data,omitempty"`
+	ID          int64                  `json:"id"`
+	UserID      int64                  `json:"user_id"`
+	User        User                   `json:"user"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Latitude    float64                `json:"latitude"`
+	Longitude   float64                `json:"longitude"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
+	Data        map[string]interface{} `json:"data,omitempty"`
 }
 
 func hoopExists(hoop *Hoop, fetch bool) (bool, *Hoop) {
 	if fetch {
-        if newHoop, err := getHoop(hoop.ID); err != nil {
+		if newHoop, err := getHoop(hoop.ID); err != nil {
 			log.Println(err)
 			return false, nil
-        } else {
-            *hoop = newHoop
-        }
+		} else {
+			*hoop = newHoop
+		}
 
 		return true, hoop
 	} else {
@@ -42,108 +42,108 @@ func hoopExists(hoop *Hoop, fetch bool) (bool, *Hoop) {
 }
 
 func getHoop(hoopID int64) (hoop Hoop, err error) {
-    if err = db.QueryRow(GET_HOOP_SQL, hoopID).Scan(
-        &hoop.ID,
-        &hoop.UserID,
-        &hoop.Name,
-        &hoop.Description,
-        &hoop.Latitude,
-        &hoop.Longitude,
-        &hoop.CreatedAt,
-        &hoop.UpdatedAt,
-    ); err != nil {
-        return
-    }
+	if err = db.QueryRow(GET_HOOP_SQL, hoopID).Scan(
+		&hoop.ID,
+		&hoop.UserID,
+		&hoop.Name,
+		&hoop.Description,
+		&hoop.Latitude,
+		&hoop.Longitude,
+		&hoop.CreatedAt,
+		&hoop.UpdatedAt,
+	); err != nil {
+		return
+	}
 
-    if hoop.User, err = getUserByID(hoop.UserID); err != nil {
-        return
-    }
+	if hoop.User, err = getUserByID(hoop.UserID); err != nil {
+		return
+	}
 
-    var featuredStory Story
-    if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
-        return
-    } else {
-        hoop.Data = map[string]interface{}{}
-        hoop.Data["featured_story"] = featuredStory
-    }
+	var featuredStory Story
+	if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
+		return
+	} else {
+		hoop.Data = map[string]interface{}{}
+		hoop.Data["featured_story"] = featuredStory
+	}
 
-    return
+	return
 }
 
 func getHoops(query string, args ...interface{}) (hoops []Hoop, err error) {
-    var rows *sql.Rows
+	var rows *sql.Rows
 
-    if rows, err = db.Query(query, args...); err != nil {
-        return
-    }
+	if rows, err = db.Query(query, args...); err != nil {
+		return
+	}
 
-    for rows.Next() {
-        var hoop Hoop
+	for rows.Next() {
+		var hoop Hoop
 
-        if err = rows.Scan(
-            &hoop.ID,
-            &hoop.UserID,
-            &hoop.Name,
-            &hoop.Description,
-            &hoop.Latitude,
-            &hoop.Longitude,
-            &hoop.CreatedAt,
-            &hoop.UpdatedAt,
-        ); err != nil {
-            return
-        }
+		if err = rows.Scan(
+			&hoop.ID,
+			&hoop.UserID,
+			&hoop.Name,
+			&hoop.Description,
+			&hoop.Latitude,
+			&hoop.Longitude,
+			&hoop.CreatedAt,
+			&hoop.UpdatedAt,
+		); err != nil {
+			return
+		}
 
-        if hoop.User, err = getUserByID(hoop.UserID); err != nil {
-            return
-        }
+		if hoop.User, err = getUserByID(hoop.UserID); err != nil {
+			return
+		}
 
-        var featuredStory Story
-        if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
-            return
-        } else {
-            hoop.Data = map[string]interface{}{}
-            hoop.Data["featured_story"] = featuredStory
-        }
+		var featuredStory Story
+		if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
+			return
+		} else {
+			hoop.Data = map[string]interface{}{}
+			hoop.Data["featured_story"] = featuredStory
+		}
 
-        hoops = append(hoops, hoop)
-    }
+		hoops = append(hoops, hoop)
+	}
 
-    return
+	return
 }
 
 func insertHoop(userID int64, name, description, imageURL string, latitude, longitude float64) error {
-    // Start Transaction
-    tx, err := db.Begin()
-    if err != nil {
-        return err
-    }
+	// Start Transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 
-    var hoopID, storyID int64
+	var hoopID, storyID int64
 
-    // Insert Hoop
-    if err := tx.QueryRow(INSERT_HOOP_SQL, userID, name, description, latitude, longitude).Scan(&hoopID); err != nil {
-        return err
-    }
+	// Insert Hoop
+	if err := tx.QueryRow(INSERT_HOOP_SQL, userID, name, description, latitude, longitude).Scan(&hoopID); err != nil {
+		return err
+	}
 
-    // Insert Story
-    if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, imageURL).Scan(&storyID); err != nil {
-        return err
-    }
+	// Insert Story
+	if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, imageURL).Scan(&storyID); err != nil {
+		return err
+	}
 
-    // Insert HoopFeaturedStory
-    if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID); err != nil {
-        return err
-    }
+	// Insert HoopFeaturedStory
+	if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID); err != nil {
+		return err
+	}
 
-    // Insert Activity
-    if _, err := tx.Exec(INSERT_POST_HOOP_ACTIVITY_SQL, userID, ACTIVITY_POST_HOOP, hoopID); err != nil {
-        return err
-    }
+	// Insert Activity
+	if _, err := tx.Exec(INSERT_POST_HOOP_ACTIVITY_SQL, userID, ACTIVITY_POST_HOOP, hoopID); err != nil {
+		return err
+	}
 
-    // End Transaction
-    if err := tx.Commit(); err != nil {
-        return err
-    }
+	// End Transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }

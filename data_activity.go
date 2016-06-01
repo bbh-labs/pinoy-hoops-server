@@ -40,19 +40,19 @@ func (a *Activity) fetchData() {
 		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
 			a.Data["story"] = *story
 		}
-    case ACTIVITY_POST_LIKE_HOOP:
+	case ACTIVITY_POST_LIKE_HOOP:
 		if ok, hoop := hoopExists(&Hoop{ID: a.HoopID}, true); ok {
 			a.Data["hoop"] = *hoop
 		}
-    case ACTIVITY_POST_LIKE_STORY:
+	case ACTIVITY_POST_LIKE_STORY:
 		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
 			a.Data["story"] = *story
 		}
-    case ACTIVITY_POST_COMMENT_HOOP:
+	case ACTIVITY_POST_COMMENT_HOOP:
 		if ok, hoop := hoopExists(&Hoop{ID: a.HoopID}, true); ok {
 			a.Data["hoop"] = *hoop
 		}
-    case ACTIVITY_POST_COMMENT_STORY:
+	case ACTIVITY_POST_COMMENT_STORY:
 		if ok, story := storyExists(&Story{ID: a.StoryID}, true); ok {
 			a.Data["story"] = *story
 		}
@@ -60,34 +60,34 @@ func (a *Activity) fetchData() {
 }
 
 func getActivities(userID int64) ([]Activity, error) {
-    var activities []Activity
+	var activities []Activity
 
-    rows, err := db.Query(GET_ACTIVITIES_SQL, userID)
-    if err != nil {
-        return nil, err
-    }
+	rows, err := db.Query(GET_ACTIVITIES_SQL, userID)
+	if err != nil {
+		return nil, err
+	}
 
-    var hoopID, storyID sql.NullInt64
+	var hoopID, storyID sql.NullInt64
 
-    for rows.Next() {
-        var activity Activity
+	for rows.Next() {
+		var activity Activity
 
-        if err := rows.Scan(
-            &activity.UserID,
-            &activity.Type,
-            &hoopID,
-            &storyID,
-            &activity.CreatedAt,
-        ); err != nil {
-            return nil, err
-        }
+		if err := rows.Scan(
+			&activity.UserID,
+			&activity.Type,
+			&hoopID,
+			&storyID,
+			&activity.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
 
-        activity.HoopID = fromNullInt64(hoopID)
-        activity.StoryID = fromNullInt64(storyID)
-        activity.fetchData()
+		activity.HoopID = fromNullInt64(hoopID)
+		activity.StoryID = fromNullInt64(storyID)
+		activity.fetchData()
 
-        activities = append(activities, activity)
-    }
+		activities = append(activities, activity)
+	}
 
-    return activities, nil
+	return activities, nil
 }

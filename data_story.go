@@ -17,23 +17,23 @@ type Story struct {
 	ImageURL    string    `json:"image_url"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-    viewCount   int64     `json:"-"`
+	viewCount   int64     `json:"-"`
 }
 
 type MostViewedStories []Story
 
 func (stories MostViewedStories) Len() int {
-    return len(stories)
+	return len(stories)
 }
 
 func (stories MostViewedStories) Less(i, j int) bool {
-    return stories[i].viewCount > stories[j].viewCount
+	return stories[i].viewCount > stories[j].viewCount
 }
 
 func (stories MostViewedStories) Swap(i, j int) {
-    tmp := stories[i]
-    stories[i] = stories[j]
-    stories[j] = tmp
+	tmp := stories[i]
+	stories[i] = stories[j]
+	stories[j] = tmp
 }
 
 func storyExists(story *Story, fetch bool) (bool, *Story) {
@@ -70,103 +70,103 @@ func storyExists(story *Story, fetch bool) (bool, *Story) {
 }
 
 func getStory(storyID int64) (story Story, err error) {
-    if err = db.QueryRow(GET_STORY_SQL, storyID).Scan(
-        &story.ID,
-        &story.HoopID,
-        &story.UserID,
-        &story.Name,
-        &story.Description,
-        &story.ImageURL,
-        &story.CreatedAt,
-        &story.UpdatedAt,
-    ); err != nil {
-        return
-    }
+	if err = db.QueryRow(GET_STORY_SQL, storyID).Scan(
+		&story.ID,
+		&story.HoopID,
+		&story.UserID,
+		&story.Name,
+		&story.Description,
+		&story.ImageURL,
+		&story.CreatedAt,
+		&story.UpdatedAt,
+	); err != nil {
+		return
+	}
 
-    if story.Hoop, err = getHoop(story.HoopID); err != nil {
-        return
-    }
+	if story.Hoop, err = getHoop(story.HoopID); err != nil {
+		return
+	}
 
-    if story.User, err = getUserByID(story.UserID); err != nil {
-        return
-    }
+	if story.User, err = getUserByID(story.UserID); err != nil {
+		return
+	}
 
-    return
+	return
 }
 
 func getFeaturedStory(hoopID int64) (story Story, err error) {
-    if err = db.QueryRow(GET_FEATURED_STORY_SQL, hoopID).Scan(
-        &story.ID,
-        &story.HoopID,
-        &story.UserID,
-        &story.Name,
-        &story.Description,
-        &story.ImageURL,
-        &story.CreatedAt,
-        &story.UpdatedAt,
-    ); err != nil {
-        return
-    }
+	if err = db.QueryRow(GET_FEATURED_STORY_SQL, hoopID).Scan(
+		&story.ID,
+		&story.HoopID,
+		&story.UserID,
+		&story.Name,
+		&story.Description,
+		&story.ImageURL,
+		&story.CreatedAt,
+		&story.UpdatedAt,
+	); err != nil {
+		return
+	}
 
-    if story.User, err = getUserByID(story.UserID); err != nil {
-        return
-    }
+	if story.User, err = getUserByID(story.UserID); err != nil {
+		return
+	}
 
-    return
+	return
 }
 
 func getStories(query string, hoopID int64) ([]Story, error) {
-    var stories []Story
+	var stories []Story
 
-    rows, err := db.Query(query, hoopID)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	rows, err := db.Query(query, hoopID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    for rows.Next() {
-        var story Story
+	for rows.Next() {
+		var story Story
 
-        if err := rows.Scan(
-            &story.ID,
-            &story.HoopID,
-            &story.UserID,
-            &story.Name,
-            &story.Description,
-            &story.ImageURL,
-            &story.CreatedAt,
-            &story.UpdatedAt,
-        ); err != nil {
-            return nil, err
-        }
+		if err := rows.Scan(
+			&story.ID,
+			&story.HoopID,
+			&story.UserID,
+			&story.Name,
+			&story.Description,
+			&story.ImageURL,
+			&story.CreatedAt,
+			&story.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
 
-        stories = append(stories, story)
-    }
+		stories = append(stories, story)
+	}
 
-    return stories, nil
+	return stories, nil
 }
 
 func insertStory(hoopID, userID int64, name, description, imageURL string) error {
-    var storyID int64
+	var storyID int64
 
-    tx, err := db.Begin()
-    if err != nil {
-        return err
-    }
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 
-    // Insert Story
-    if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, imageURL).Scan(&storyID); err != nil {
-        return err
-    }
+	// Insert Story
+	if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, imageURL).Scan(&storyID); err != nil {
+		return err
+	}
 
-    // Insert Activity
-    if _, err := tx.Exec(INSERT_POST_STORY_ACTIVITY_SQL, userID, ACTIVITY_POST_STORY, storyID); err != nil {
-        return err
-    }
+	// Insert Activity
+	if _, err := tx.Exec(INSERT_POST_STORY_ACTIVITY_SQL, userID, ACTIVITY_POST_STORY, storyID); err != nil {
+		return err
+	}
 
-    if err := tx.Commit(); err != nil {
-        return err
-    }
+	if err := tx.Commit(); err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
