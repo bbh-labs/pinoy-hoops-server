@@ -62,12 +62,12 @@ var port = flag.String("port", "8080", "server port")
 
 // Errors
 var (
-    ErrEmailTooShort    = errors.New("Email too short")
-    ErrPasswordTooShort = errors.New("Password too short")
-    ErrNotLoggedIn      = errors.New("User is not logged in")
-    ErrPasswordMismatch = errors.New("Password mismatch")
-    ErrInvalidGender    = errors.New("Invalid gender")
-    ErrInvalidDateFormat    = errors.New("Invalid date format")
+    ErrEmailTooShort     = errors.New("Email too short")
+    ErrPasswordTooShort  = errors.New("Password too short")
+    ErrNotLoggedIn       = errors.New("User is not logged in")
+    ErrPasswordMismatch  = errors.New("Password mismatch")
+    ErrInvalidGender     = errors.New("Invalid gender")
+    ErrInvalidDateFormat = errors.New("Invalid date format")
 )
 
 // Constants
@@ -216,18 +216,21 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
+
         case "instagram":
             if _, err := db.Exec(UPDATE_USER_INSTAGRAM_SQL, authuser.NickName, user.ID); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
+
         case "twitter":
             if _, err := db.Exec(UPDATE_USER_TWITTER_SQL, authuser.UserID, user.ID); err != nil {
                 log.Println(err)
                 w.WriteHeader(http.StatusInternalServerError)
                 return
             }
+
         default:
             w.WriteHeader(http.StatusBadRequest)
             return
@@ -241,10 +244,13 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
     switch authuser.Provider {
     case "facebook":
         user.FacebookID = authuser.UserID
+
     case "instagram":
         user.InstagramID = authuser.NickName
+
     case "twitter":
         user.TwitterID = authuser.UserID
+
     default:
         w.WriteHeader(http.StatusBadRequest)
         return
@@ -331,6 +337,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         } else {
             w.WriteHeader(http.StatusForbidden)
         }
+
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -405,6 +412,7 @@ func signupHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.WriteHeader(http.StatusOK)
+
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }
@@ -420,54 +428,33 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         // Set user firstname and lastname
-        user.Firstname = r.FormValue("firstname")
-        user.Lastname = r.FormValue("lastname")
-        user.Email = r.FormValue("email")
+        name := strings.Trim(r.FormValue("name"), " ")
+        nameparts := strings.Split(name, " ")
 
-        // Check if user is updating password
-        oldPassword := r.FormValue("old-password")
-        newPassword := r.FormValue("new-password")
-        if user.Password != "" {
-            // Process valid input (both passwords are at least the minimum length)
-            if len(oldPassword) >= 8 && len(newPassword) >= 8 {
-                // Check if old password matches
-                if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
-                    w.WriteHeader(http.StatusBadRequest)
-                    return
-                }
+        if len(nameparts) > 0 {
+            user.Firstname = nameparts[0]
 
-                // Create hashed password from new password
-                hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-                if err != nil {
-                    log.Println(err)
-                    w.WriteHeader(http.StatusInternalServerError)
-                    return
-                }
-                user.Password = string(hashedPassword)
-
-            // Invalid input (at least one of the password is less than minimum length
-            } else if len(oldPassword) > 0 && len(newPassword) > 0 {
-                w.WriteHeader(http.StatusBadRequest)
-                return
-
-            // Ignore input (at least one of the two passwords is empty)
+            if len(nameparts) > 1 {
+                user.Lastname = nameparts[len(nameparts) - 1]
             } else {
-                user.Password = ""
+                user.Lastname = ""
             }
         }
 
-        // Update user avatar if necessary
-        if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
-            log.Println(err)
-            w.WriteHeader(http.StatusInternalServerError)
-            return
+        // Set user gender
+        gender := strings.ToLower(r.FormValue("gender"))
+        if gender == "male" || gender == "female" {
+            user.Gender = gender
         } else {
-            if user.ImageURL != "" {
-                if err := os.Remove(user.ImageURL); err != nil {
-                    log.Println(err)
-                }
-            }
-            user.ImageURL = destination
+            http.Error(w, ErrInvalidGender.Error(), http.StatusBadRequest)
+            return
+        }
+
+        // Set user birthdate
+        birthdate := r.FormValue("birthdate")
+        if _, err := time.Parse(DateFormat, birthdate); err != nil {
+            http.Error(w, ErrInvalidDateFormat.Error(), http.StatusBadRequest)
+            return
         }
 
         if err := updateUser(user); err != nil {
@@ -477,6 +464,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
         }
 
         w.WriteHeader(http.StatusOK)
+
     default:
         w.WriteHeader(http.StatusMethodNotAllowed)
     }

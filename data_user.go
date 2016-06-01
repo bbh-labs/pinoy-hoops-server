@@ -184,23 +184,13 @@ func insertUser(user *User) (int64, error) {
 }
 
 func updateUser(user *User) (err error) {
-    if user.Email != "" && user.Password != "" {
-        _, err = db.Exec(
-            UPDATE_USER_WITH_EMAIL_AND_PASSWORD_SQL,
-            &user.Firstname,
-            &user.Lastname,
-            &user.Email,
-            &user.Password,
-            &user.ImageURL,
-        )
-    } else {
-        _, err = db.Exec(
-            UPDATE_USER_SQL,
-            &user.Firstname,
-            &user.Lastname,
-            &user.ImageURL,
-        )
-    }
+    _, err = db.Exec(
+        UPDATE_USER_SQL,
+        &user.Firstname,
+        &user.Lastname,
+        &user.Gender,
+        &user.Birthdate,
+    )
 
 	return
 }

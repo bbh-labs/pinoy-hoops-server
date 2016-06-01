@@ -109,7 +109,8 @@ const UPDATE_USER_SQL = `
 UPDATE "user" SET
 firstname = $1,
 lastname = $2,
-image_url = $3,
+gender = $3,
+birthdate = $4,
 updated_at = NOW()`
 
 const UPDATE_USER_WITH_EMAIL_AND_PASSWORD_SQL = `
