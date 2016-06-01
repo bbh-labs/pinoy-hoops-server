@@ -482,12 +482,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func hoopHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		ok, _ := loggedIn(w, r, false)
-		if !ok {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
 		hoopID, err := strconv.ParseInt(r.FormValue("hoopID"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -594,12 +588,6 @@ func hoopsHandler(w http.ResponseWriter, r *http.Request) {
 func storyHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		ok, _ := loggedIn(w, r, false)
-		if !ok {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
 		storyID, err := strconv.ParseInt(r.FormValue("storyID"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -851,12 +839,6 @@ func likeStoryHandler(w http.ResponseWriter, r *http.Request) {
 func viewHoopHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "PATCH":
-		ok, _ := loggedIn(w, r, false)
-		if !ok {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
 		if hoopID := r.FormValue("hoop-id"); hoopID != "" {
 			hoopID, err := strconv.ParseInt(hoopID, 10, 64)
 			if err != nil {
@@ -883,12 +865,6 @@ func viewHoopHandler(w http.ResponseWriter, r *http.Request) {
 func viewStoryHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "PATCH":
-		ok, _ := loggedIn(w, r, false)
-		if !ok {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
 		if storyID := r.FormValue("story-id"); storyID != "" {
 			storyID, err := strconv.ParseInt(storyID, 10, 64)
 			if err != nil {
