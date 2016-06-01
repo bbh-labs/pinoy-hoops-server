@@ -454,6 +454,8 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
 		if _, err := time.Parse(DateFormat, birthdate); err != nil {
 			http.Error(w, ErrInvalidDateFormat.Error(), http.StatusBadRequest)
 			return
+		} else {
+			user.Birthdate = birthdate
 		}
 
 		if err := updateUser(user); err != nil {
