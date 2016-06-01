@@ -540,6 +540,11 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if latitude == 0 && longitude == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		name := r.FormValue("name")
 		description := r.FormValue("description")
 
