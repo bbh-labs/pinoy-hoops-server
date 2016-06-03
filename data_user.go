@@ -190,6 +190,7 @@ func updateUser(user *User) (err error) {
 		&user.Lastname,
 		&user.Gender,
 		&user.Birthdate,
+		&user.ID,
 	)
 
 	return

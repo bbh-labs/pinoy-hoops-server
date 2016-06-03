@@ -111,7 +111,8 @@ firstname = $1,
 lastname = $2,
 gender = $3,
 birthdate = $4,
-updated_at = NOW()`
+updated_at = NOW()
+WHERE id = $5`
 
 const UPDATE_USER_WITH_EMAIL_AND_PASSWORD_SQL = `
 UPDATE "user" SET
