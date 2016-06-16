@@ -78,8 +78,9 @@ CREATE TABLE activity (
 
 const CREATE_HOOP_FEATURED_STORY_TABLE_SQL = `
 CREATE TABLE hoop_featured_story (
-	hoop_id bigserial primary key,
+	hoop_id bigserial not null,
 	story_id bigserial not null,
+	type text not null,
 	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
 	FOREIGN KEY(story_id) REFERENCES story (id),
     UNIQUE (story_id)
@@ -252,8 +253,8 @@ ORDER BY created_at DESC`
 
 // HoopFeaturedStory
 const INSERT_HOOP_FEATURED_STORY_SQL = `
-INSERT INTO hoop_featured_story (hoop_id, story_id)
-VALUES ($1, $2)`
+INSERT INTO hoop_featured_story (hoop_id, story_id, type)
+VALUES ($1, $2, $3)`
 
 // Activity
 const GET_ACTIVITIES_SQL = `

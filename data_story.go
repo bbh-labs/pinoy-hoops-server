@@ -12,40 +12,19 @@ type Story struct {
 	UserID      int64     `json:"user_id"`
 	Hoop        Hoop      `json:"hoop"`
 	User        User      `json:"user"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
 	ImageURL    string    `json:"image_url"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	viewCount   int64     `json:"-"`
-}
-
-type MostViewedStories []Story
-
-func (stories MostViewedStories) Len() int {
-	return len(stories)
-}
-
-func (stories MostViewedStories) Less(i, j int) bool {
-	return stories[i].viewCount > stories[j].viewCount
-}
-
-func (stories MostViewedStories) Swap(i, j int) {
-	tmp := stories[i]
-	stories[i] = stories[j]
-	stories[j] = tmp
 }
 
 func storyExists(story *Story, fetch bool) (bool, *Story) {
 	if fetch {
-		var name, description, imageURL sql.NullString
+		var imageURL sql.NullString
 
 		if err := db.QueryRow(GET_STORY_SQL, story.ID).Scan(
 			&story.ID,
 			&story.HoopID,
 			&story.UserID,
-			&name,
-			&description,
 			&imageURL,
 			&story.CreatedAt,
 			&story.UpdatedAt,
@@ -54,8 +33,6 @@ func storyExists(story *Story, fetch bool) (bool, *Story) {
 			return false, nil
 		}
 
-		story.Name = fromNullString(name)
-		story.Description = fromNullString(description)
 		story.ImageURL = fromNullString(imageURL)
 
 		return true, story
@@ -74,8 +51,6 @@ func getStory(storyID int64) (story Story, err error) {
 		&story.ID,
 		&story.HoopID,
 		&story.UserID,
-		&story.Name,
-		&story.Description,
 		&story.ImageURL,
 		&story.CreatedAt,
 		&story.UpdatedAt,
@@ -99,8 +74,6 @@ func getFeaturedStory(hoopID int64) (story Story, err error) {
 		&story.ID,
 		&story.HoopID,
 		&story.UserID,
-		&story.Name,
-		&story.Description,
 		&story.ImageURL,
 		&story.CreatedAt,
 		&story.UpdatedAt,
@@ -131,8 +104,6 @@ func getStories(query string, hoopID int64) ([]Story, error) {
 			&story.ID,
 			&story.HoopID,
 			&story.UserID,
-			&story.Name,
-			&story.Description,
 			&story.ImageURL,
 			&story.CreatedAt,
 			&story.UpdatedAt,

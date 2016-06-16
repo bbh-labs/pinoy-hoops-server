@@ -111,7 +111,7 @@ func getHoops(query string, args ...interface{}) (hoops []Hoop, err error) {
 	return
 }
 
-func insertHoop(userID int64, name, description, imageURL string, latitude, longitude float64) error {
+func insertHoop(userID int64, name, description, hoopImageURL, courtImageURL, crewImageURL string, latitude, longitude float64) error {
 	// Start Transaction
 	tx, err := db.Begin()
 	if err != nil {
@@ -125,14 +125,37 @@ func insertHoop(userID int64, name, description, imageURL string, latitude, long
 		return err
 	}
 
-	// Insert Story
-	if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, imageURL).Scan(&storyID); err != nil {
-		return err
+	// Insert Hoop Story
+	if hoopImageURL != "" {
+		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, hoopImageURL).Scan(&storyID); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID, "hoop"); err != nil {
+			return err
+		}
 	}
 
-	// Insert HoopFeaturedStory
-	if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID); err != nil {
-		return err
+	// Insert Court Story
+	if courtImageURL != "" {
+		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, courtImageURL).Scan(&storyID); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID, "court"); err != nil {
+			return err
+		}
+	}
+
+	// Insert Crew Story
+	if crewImageURL != "" {
+		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, crewImageURL).Scan(&storyID); err != nil {
+			return err
+		}
+
+		if _, err := tx.Exec(INSERT_HOOP_FEATURED_STORY_SQL, hoopID, storyID, "crew"); err != nil {
+			return err
+		}
 	}
 
 	// Insert Activity
