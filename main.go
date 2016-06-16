@@ -477,7 +477,7 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 
 		hoopImageURL := r.FormValue("hoop_image_url")
 		if hoopImageURL == "" {
-			if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
+			if destination, err := copyFile(r, "hoop-image", ContentDir, randomFilename()); err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -488,7 +488,7 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 
 		courtImageURL := r.FormValue("court_image_url")
 		if courtImageURL == "" {
-			if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
+			if destination, err := copyFile(r, "court-image", ContentDir, randomFilename()); err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -499,7 +499,7 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 
 		crewImageURL := r.FormValue("crew_image_url")
 		if crewImageURL == "" {
-			if destination, err := copyFile(r, "image", ContentDir, randomFilename()); err != nil {
+			if destination, err := copyFile(r, "crew-image", ContentDir, randomFilename()); err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
