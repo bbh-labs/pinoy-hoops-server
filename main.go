@@ -58,12 +58,16 @@ var port = flag.String("port", "8080", "server port")
 
 // Errors
 var (
-	ErrEmailTooShort     = errors.New("Email too short")
-	ErrPasswordTooShort  = errors.New("Password too short")
-	ErrNotLoggedIn       = errors.New("User is not logged in")
-	ErrPasswordMismatch  = errors.New("Password mismatch")
-	ErrInvalidGender     = errors.New("Invalid gender")
-	ErrInvalidDateFormat = errors.New("Invalid date format")
+	ErrEmailTooShort            = errors.New("Email too short")
+	ErrPasswordTooShort         = errors.New("Password too short")
+	ErrNotLoggedIn              = errors.New("User is not logged in")
+	ErrPasswordMismatch         = errors.New("Password mismatch")
+	ErrInvalidGender            = errors.New("Invalid gender")
+	ErrInvalidDateFormat        = errors.New("Invalid date format")
+	ErrHoopImageNotUploaded     = errors.New("hoop image is not uploaded")
+	ErrLatitudeNotSpecified     = errors.New("latitude is not specified")
+	ErrLongitudeNotSpecified    = errors.New("longitude is not specified")
+	ErrInvalidLatitudeLongitude = errors.New("invalid latitude and/or longitude")
 )
 
 // Constants
@@ -469,64 +473,59 @@ func hoopHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(data)
 
 	case "POST":
+		var hoopImageURL string
+		var courtImageURL string
+		var crewImageURL string
+
 		ok, user := loggedIn(w, r, true)
 		if !ok {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		hoopImageURL := r.FormValue("hoop_image_url")
-		if hoopImageURL == "" {
-			if destination, err := copyFile(r, "hoop-image", ContentDir, randomFilename()); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			} else {
-				hoopImageURL = destination
-			}
+		if destination, err := copyFile(r, "hoop-image", ContentDir, randomFilename()); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} else {
+			hoopImageURL = destination
 		}
 
-		courtImageURL := r.FormValue("court_image_url")
-		if courtImageURL == "" {
-			if destination, err := copyFile(r, "court-image", ContentDir, randomFilename()); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			} else {
-				courtImageURL = destination
-			}
+		if destination, err := copyFile(r, "court-image", ContentDir, randomFilename()); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} else {
+			courtImageURL = destination
 		}
 
-		crewImageURL := r.FormValue("crew_image_url")
-		if crewImageURL == "" {
-			if destination, err := copyFile(r, "crew-image", ContentDir, randomFilename()); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			} else {
-				crewImageURL = destination
-			}
+		if destination, err := copyFile(r, "crew-image", ContentDir, randomFilename()); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} else {
+			crewImageURL = destination
 		}
 
 		if hoopImageURL == "" && courtImageURL == "" && crewImageURL == "" {
-			w.WriteHeader(http.StatusBadRequest)
+			clientError(w, ErrHoopImageNotUploaded)
 			return
 		}
 
 		latitude, err := strconv.ParseFloat(r.FormValue("latitude"), 64)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			clientError(w, ErrLatitudeNotSpecified)
 			return
 		}
 
 		longitude, err := strconv.ParseFloat(r.FormValue("longitude"), 64)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			clientError(w, ErrLongitudeNotSpecified)
 			return
 		}
 
-		if latitude == 0 && longitude == 0 {
-			w.WriteHeader(http.StatusBadRequest)
+		if latitude <= 0 && longitude <= 0 {
+			clientError(w, ErrInvalidLatitudeLongitude)
 			return
 		}
 
@@ -1090,7 +1089,7 @@ func latestStoriesHandler(w http.ResponseWriter, r *http.Request) {
 func copyFile(r *http.Request, name string, folder, filename string) (destination string, err error) {
 	var fileheader *multipart.FileHeader
 
-	if _, fileheader, err = r.FormFile("image"); err != nil {
+	if _, fileheader, err = r.FormFile(name); err != nil {
 		if err == http.ErrMissingFile {
 			err = nil
 		}
@@ -1150,4 +1149,9 @@ func randomFilename() string {
 func redisInstance() (red redis.Conn, err error) {
 	red, err = redis.Dial("tcp", *cachehost+":"+*cacheport)
 	return
+}
+
+func clientError(w http.ResponseWriter, err error) {
+	log.Println(err)
+	http.Error(w, err.Error(), http.StatusBadRequest)
 }
