@@ -30,7 +30,7 @@ CREATE TABLE "user" (
 	password varchar(60),
 	facebook_id varchar(50),
 	image_url varchar(255),
-	bg_url varchar(255),
+	background_url varchar(255),
 	created_at timestamp with time zone not null,
 	updated_at timestamp with time zone not null,
     UNIQUE (email, facebook_id)
@@ -99,8 +99,8 @@ CREATE TABLE comment (
 
 // User
 const INSERT_USER_SQL = `
-INSERT INTO "user" (firstname, lastname, gender, birthdate, description, email, password, facebook_id, image_url, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+INSERT INTO "user" (firstname, lastname, gender, birthdate, description, email, password, facebook_id, image_url, background_url, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
 ON CONFLICT (email, facebook_id)
 DO NOTHING
 RETURNING id`

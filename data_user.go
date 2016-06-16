@@ -132,6 +132,7 @@ func insertUser(user *User) (int64, error) {
 		&user.Password,
 		&user.FacebookID,
 		&user.ImageURL,
+		&user.BackgroundURL,
 	).Scan(&userID); err != nil && err != sql.ErrNoRows {
 		return 0, err
 	}
