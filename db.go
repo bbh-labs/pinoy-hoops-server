@@ -213,7 +213,7 @@ WHERE id = $1
 LIMIT 1`
 
 const GET_FEATURED_STORY_SQL = `
-SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at FROM story
+SELECT id, hoop_id, user_id, image_url, created_at, updated_at FROM story
 WHERE hoop_id = $1
 LIMIT 1`
 
