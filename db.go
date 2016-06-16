@@ -240,7 +240,7 @@ WHERE hoop_id = $1
 ORDER BY (SELECT COUNT(id) FROM activity WHERE type = 202 AND story_id = story.id) DESC`
 
 const GET_LATEST_STORIES_SQL = `
-SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
+SELECT id, hoop_id, user_id, image_url, created_at, updated_at
 FROM story
 WHERE hoop_id = $1
 ORDER BY created_at DESC`
