@@ -27,8 +27,6 @@ import (
 	"github.com/markbates/goth"
 	"github.com/markbates/goth/gothic"
 	"github.com/markbates/goth/providers/facebook"
-	"github.com/markbates/goth/providers/instagram"
-	"github.com/markbates/goth/providers/twitter"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -139,8 +137,6 @@ func main() {
 	gothic.Store = sessions.NewFilesystemStore(os.TempDir(), []byte("pinoy-hoops"))
 	goth.UseProviders(
 		facebook.New(os.Getenv("FACEBOOK_KEY"), os.Getenv("FACEBOOK_SECRET"), *address+"/auth/facebook/callback"),
-		instagram.New(os.Getenv("INSTAGRAM_KEY"), os.Getenv("INSTAGRAM_SECRET"), *address+"/auth/instagram/callback"),
-		twitter.New(os.Getenv("TWITTER_KEY"), os.Getenv("TWITTER_SECRET"), *address+"/auth/twitter/callback"),
 	)
 
 	// Prepare web server
@@ -159,7 +155,7 @@ func main() {
 	apiRouter.HandleFunc("/like/hoop", likeHoopHandler)
 
 	// Prepare extra handlers
-	apiRouter.HandleFunc("/user/image", userImageHandler)
+	apiRouter.HandleFunc("/user/background", userBackgroundHandler)
 	apiRouter.HandleFunc("/user/myhoops", userMyHoopsHandler)
 	apiRouter.HandleFunc("/user/otherhoops", userOtherHoopsHandler)
 	apiRouter.HandleFunc("/hoop/comments", hoopCommentsHandler)
@@ -200,20 +196,6 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		switch authuser.Provider {
 		case "facebook":
 			if _, err := db.Exec(UPDATE_USER_FACEBOOK_SQL, authuser.UserID, user.ID); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-		case "instagram":
-			if _, err := db.Exec(UPDATE_USER_INSTAGRAM_SQL, authuser.NickName, user.ID); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-		case "twitter":
-			if _, err := db.Exec(UPDATE_USER_TWITTER_SQL, authuser.UserID, user.ID); err != nil {
 				log.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -780,7 +762,7 @@ func likeHoopHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func userImageHandler(w http.ResponseWriter, r *http.Request) {
+func userBackgroundHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		ok, user := loggedIn(w, r, true)
@@ -795,7 +777,7 @@ func userImageHandler(w http.ResponseWriter, r *http.Request) {
 		} else if destination == "" {
 			w.WriteHeader(http.StatusBadRequest)
 		} else {
-			user.updateUserImage(destination)
+			user.updateBackgroundImage(destination)
 			w.WriteHeader(http.StatusOK)
 		}
 

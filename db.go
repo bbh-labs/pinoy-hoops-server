@@ -33,7 +33,7 @@ CREATE TABLE "user" (
 	bg_url varchar(255),
 	created_at timestamp with time zone not null,
 	updated_at timestamp with time zone not null,
-    UNIQUE (email, facebook_id, instagram_id, twitter_id)
+    UNIQUE (email, facebook_id)
 )`
 
 const CREATE_HOOP_TABLE_SQL = `
@@ -99,9 +99,9 @@ CREATE TABLE comment (
 
 // User
 const INSERT_USER_SQL = `
-INSERT INTO "user" (firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at)
+INSERT INTO "user" (firstname, lastname, gender, birthdate, description, email, password, facebook_id, image_url, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-ON CONFLICT (email, facebook_id, instagram_id, twitter_id)
+ON CONFLICT (email, facebook_id)
 DO NOTHING
 RETURNING id`
 
@@ -126,32 +126,27 @@ updated_at = NOW()`
 const UPDATE_USER_FACEBOOK_SQL = `
 UPDATE "user" SET facebook_id = $1 WHERE id = $2`
 
-const UPDATE_USER_INSTAGRAM_SQL = `
-UPDATE "user" SET instagram_id = $1 WHERE id = $2`
-
-const UPDATE_USER_TWITTER_SQL = `
-UPDATE "user" SET twitter_id = $1 WHERE id = $2`
-
 const UPDATE_USER_IMAGE_SQL = `
 UPDATE "user" SET image_url = $1 WHERE id = $2`
 
+const UPDATE_USER_BACKGROUND_SQL = `
+UPDATE "user" SET background_url = $1 WHERE id = $2`
+
 const GET_USER_SQL = `
-SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, background_url, created_at, updated_at FROM "user"
+SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, image_url, background_url, created_at, updated_at FROM "user"
 WHERE id = $1
 OR (email = $2 AND email != '')
 OR (facebook_id = $3 AND facebook_id != '')
-OR (instagram_id = $4 AND instagram_id != '')
-OR (twitter_id = $5 AND twitter_id != '')
 LIMIT 1`
 
 const GET_USER_BY_ID_SQL = `
-SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, background_url, created_at, updated_at FROM "user"
+SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, image_url, background_url, created_at, updated_at FROM "user"
 WHERE id = $1
 LIMIT 1`
 
 const COUNT_USER_SQL = `
 SELECT COUNT(id) FROM "user"
-WHERE id = $1 OR email = $2 OR facebook_id = $3 OR instagram_id = $4 OR twitter_id = $5
+WHERE id = $1 OR email = $2 OR facebook_id = $3
 LIMIT 1`
 
 // Hoop

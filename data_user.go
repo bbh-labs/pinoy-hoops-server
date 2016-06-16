@@ -27,6 +27,11 @@ func (user *User) updateUserImage(imageURL string) (err error) {
 	return
 }
 
+func (user *User) updateBackgroundImage(backgroundURL string) (err error) {
+	_, err = db.Exec(UPDATE_USER_BACKGROUND_SQL, backgroundURL, user.ID)
+	return
+}
+
 func userExists(user *User, fetch bool) (bool, *User) {
 	var err error
 
