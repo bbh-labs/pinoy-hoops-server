@@ -157,7 +157,6 @@ func main() {
 	apiRouter.HandleFunc("/activities", activitiesHandler)
 	apiRouter.HandleFunc("/comment/hoop", commentHoopHandler)
 	apiRouter.HandleFunc("/like/hoop", likeHoopHandler)
-	apiRouter.HandleFunc("/view/hoop", viewHoopHandler)
 
 	// Prepare extra handlers
 	apiRouter.HandleFunc("/user/image", userImageHandler)
@@ -169,7 +168,6 @@ func main() {
 	apiRouter.HandleFunc("/hoops/popular", popularHoopsHandler)
 	apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
 	apiRouter.HandleFunc("/stories/latest", latestStoriesHandler)
-	apiRouter.HandleFunc("/user/lastactivitychecktime", userLastActivityCheckTimeHandler)
 
 	// Prepare social login authenticators
 	patHandler := pat.New()
@@ -234,12 +232,6 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	switch authuser.Provider {
 	case "facebook":
 		user.FacebookID = authuser.UserID
-
-	case "instagram":
-		user.InstagramID = authuser.NickName
-
-	case "twitter":
-		user.TwitterID = authuser.UserID
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -788,32 +780,6 @@ func likeHoopHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func viewHoopHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "PATCH":
-		if hoopID := r.FormValue("hoop-id"); hoopID != "" {
-			hoopID, err := strconv.ParseInt(hoopID, 10, 64)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			if err := view(hoopID, "hoop"); err != nil {
-				log.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
 func userImageHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
@@ -1134,33 +1100,6 @@ func latestStoriesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.Write(data)
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-}
-
-func userLastActivityCheckTimeHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "PATCH":
-		ok, user := loggedIn(w, r, true)
-		if !ok {
-			w.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		secs, err := strconv.ParseInt(r.FormValue("time"), 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		if err := user.updateLastActivityCheckTime(secs); err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}

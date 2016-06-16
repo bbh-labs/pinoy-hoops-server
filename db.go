@@ -29,9 +29,8 @@ CREATE TABLE "user" (
 	email varchar(255),
 	password varchar(60),
 	facebook_id varchar(50),
-	instagram_id varchar(50),
-	twitter_id varchar(50),
 	image_url varchar(255),
+	bg_url varchar(255),
 	created_at timestamp with time zone not null,
 	updated_at timestamp with time zone not null,
     UNIQUE (email, facebook_id, instagram_id, twitter_id)
@@ -137,7 +136,7 @@ const UPDATE_USER_IMAGE_SQL = `
 UPDATE "user" SET image_url = $1 WHERE id = $2`
 
 const GET_USER_SQL = `
-SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
+SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, background_url, created_at, updated_at FROM "user"
 WHERE id = $1
 OR (email = $2 AND email != '')
 OR (facebook_id = $3 AND facebook_id != '')
@@ -146,7 +145,7 @@ OR (twitter_id = $5 AND twitter_id != '')
 LIMIT 1`
 
 const GET_USER_BY_ID_SQL = `
-SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, created_at, updated_at FROM "user"
+SELECT id, firstname, lastname, gender, birthdate, description, email, password, facebook_id, instagram_id, twitter_id, image_url, background_url, created_at, updated_at FROM "user"
 WHERE id = $1
 LIMIT 1`
 
