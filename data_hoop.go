@@ -59,13 +59,13 @@ func getHoop(hoopID int64) (hoop Hoop, err error) {
 		return
 	}
 
-	var featuredStory Story
-	if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
+	var featuredStories map[string]Story
+	if featuredStories, err = getFeaturedStories(hoop.ID); err != nil {
 		return
-	} else {
-		hoop.Data = map[string]interface{}{}
-		hoop.Data["featured_story"] = featuredStory
 	}
+
+	hoop.Data = map[string]interface{}{}
+	hoop.Data["featured_stories"] = featuredStories
 
 	return
 }
@@ -97,13 +97,13 @@ func getHoops(query string, args ...interface{}) (hoops []Hoop, err error) {
 			return
 		}
 
-		var featuredStory Story
-		if featuredStory, err = getFeaturedStory(hoop.ID); err != nil {
+		var featuredStories map[string]Story
+		if featuredStories, err = getFeaturedStories(hoop.ID); err != nil {
 			return
-		} else {
-			hoop.Data = map[string]interface{}{}
-			hoop.Data["featured_story"] = featuredStory
 		}
+
+		hoop.Data = map[string]interface{}{}
+		hoop.Data["featured_stories"] = featuredStories
 
 		hoops = append(hoops, hoop)
 	}

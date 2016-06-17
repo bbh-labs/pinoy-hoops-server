@@ -212,10 +212,11 @@ SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_a
 WHERE id = $1
 LIMIT 1`
 
-const GET_FEATURED_STORY_SQL = `
-SELECT id, hoop_id, user_id, image_url, created_at, updated_at FROM story
-WHERE hoop_id = $1
-LIMIT 1`
+const GET_FEATURED_STORIES_SQL = `
+SELECT id, story.hoop_id, user_id, image_url, created_at, updated_at, type FROM story
+INNER JOIN hoop_featured_story
+ON story.id = hoop_featured_story.story_id
+WHERE story.hoop_id = $1`
 
 const COUNT_STORY_SQL = `
 SELECT COUNT(id) FROM story

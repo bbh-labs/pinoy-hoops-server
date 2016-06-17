@@ -69,20 +69,38 @@ func getStory(storyID int64) (story Story, err error) {
 	return
 }
 
-func getFeaturedStory(hoopID int64) (story Story, err error) {
-	if err = db.QueryRow(GET_FEATURED_STORY_SQL, hoopID).Scan(
-		&story.ID,
-		&story.HoopID,
-		&story.UserID,
-		&story.ImageURL,
-		&story.CreatedAt,
-		&story.UpdatedAt,
-	); err != nil {
-		return
+func getFeaturedStories(hoopID int64) (stories map[string]Story, err error) {
+	rows, err := db.Query(GET_FEATURED_STORIES_SQL, hoopID)
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
 
-	if story.User, err = getUserByID(story.UserID); err != nil {
-		return
+	for rows.Next() {
+		var story Story
+		var typ string
+
+		if err = rows.Scan(
+			&story.ID,
+			&story.HoopID,
+			&story.UserID,
+			&story.ImageURL,
+			&story.CreatedAt,
+			&story.UpdatedAt,
+			&typ,
+		); err != nil {
+			return
+		}
+
+		if story.User, err = getUserByID(story.UserID); err != nil {
+			return
+		}
+
+		if stories == nil {
+			stories = make(map[string]Story)
+		}
+
+		stories[typ] = story
 	}
 
 	return
