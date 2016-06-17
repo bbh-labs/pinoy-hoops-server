@@ -55,8 +55,6 @@ CREATE TABLE story (
 	id bigserial primary key,
 	hoop_id bigserial not null,
 	user_id bigserial not null,
-	name varchar(255) not null,
-	description varchar(255) not null,
 	image_url varchar(255) not null,
 	created_at timestamp with time zone not null,
 	updated_at timestamp with time zone not null,
@@ -203,12 +201,12 @@ WHERE name LIKE $1`
 
 // Story
 const INSERT_STORY_SQL = `
-INSERT INTO story (hoop_id, user_id, name, description, image_url, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+INSERT INTO story (hoop_id, user_id, image_url, created_at, updated_at)
+VALUES ($1, $2, $3, NOW(), NOW())
 RETURNING id`
 
 const GET_STORY_SQL = `
-SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at FROM story
+SELECT id, hoop_id, user_id, image_url, created_at, updated_at FROM story
 WHERE id = $1
 LIMIT 1`
 
@@ -224,7 +222,7 @@ WHERE id = $1
 LIMIT 1`
 
 const GET_STORIES_SQL = `
-SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
+SELECT id, hoop_id, user_id, image_url, created_at, updated_at
 FROM story
 WHERE hoop_id = $1`
 

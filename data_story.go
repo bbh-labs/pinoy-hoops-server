@@ -135,7 +135,7 @@ func getStories(query string, hoopID int64) ([]Story, error) {
 	return stories, nil
 }
 
-func insertStory(hoopID, userID int64, name, description, imageURL string) error {
+func insertStory(hoopID, userID int64, imageURL string) error {
 	var storyID int64
 
 	tx, err := db.Begin()
@@ -144,7 +144,7 @@ func insertStory(hoopID, userID int64, name, description, imageURL string) error
 	}
 
 	// Insert Story
-	if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, imageURL).Scan(&storyID); err != nil {
+	if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, imageURL).Scan(&storyID); err != nil {
 		return err
 	}
 

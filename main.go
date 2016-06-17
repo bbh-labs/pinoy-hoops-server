@@ -623,10 +623,7 @@ func storyHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		name := r.FormValue("name")
-		description := r.FormValue("description")
-
-		if err := insertStory(hoopID, user.ID, name, description, imageURL); err != nil {
+		if err := insertStory(hoopID, user.ID, imageURL); err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
