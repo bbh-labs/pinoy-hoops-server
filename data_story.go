@@ -7,14 +7,14 @@ import (
 )
 
 type Story struct {
-	ID          int64     `json:"id"`
-	HoopID      int64     `json:"hoop_id"`
-	UserID      int64     `json:"user_id"`
-	Hoop        Hoop      `json:"hoop"`
-	User        User      `json:"user"`
-	ImageURL    string    `json:"image_url"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID        int64     `json:"id"`
+	HoopID    int64     `json:"hoop_id"`
+	UserID    int64     `json:"user_id"`
+	Hoop      Hoop      `json:"hoop"`
+	User      User      `json:"user"`
+	ImageURL  string    `json:"image_url"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func storyExists(story *Story, fetch bool) (bool, *Story) {

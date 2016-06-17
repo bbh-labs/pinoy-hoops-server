@@ -7,19 +7,19 @@ import (
 )
 
 type User struct {
-	ID                      int64     `json:"id"`
-	Firstname               string    `json:"firstname,omitempty"`
-	Lastname                string    `json:"lastname,omitempty"`
-	Gender                  string    `json:"gender,omitempty"`
-	Birthdate               string    `json:"birthdate,omitempty"`
-	Description             string    `json:"description,omitempty"`
-	Email                   string    `json:"email,omitempty"`
-	Password                string    `json:"-"`
-	FacebookID              string    `json:"facebook_id,omitempty"`
-	ImageURL                string    `json:"image_url,omitempty"`
-	BackgroundURL           string    `json:"background_url,omitempty"`
-	CreatedAt               time.Time `json:"created_at"`
-	UpdatedAt               time.Time `json:"updated_at"`
+	ID            int64     `json:"id"`
+	Firstname     string    `json:"firstname,omitempty"`
+	Lastname      string    `json:"lastname,omitempty"`
+	Gender        string    `json:"gender,omitempty"`
+	Birthdate     string    `json:"birthdate,omitempty"`
+	Description   string    `json:"description,omitempty"`
+	Email         string    `json:"email,omitempty"`
+	Password      string    `json:"-"`
+	FacebookID    string    `json:"facebook_id,omitempty"`
+	ImageURL      string    `json:"image_url,omitempty"`
+	BackgroundURL string    `json:"background_url,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func (user *User) updateUserImage(imageURL string) (err error) {

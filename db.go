@@ -33,7 +33,7 @@ CREATE TABLE "user" (
 	background_url varchar(255),
 	created_at timestamp with time zone not null,
 	updated_at timestamp with time zone not null,
-    UNIQUE (email, facebook_id)
+	UNIQUE (email, facebook_id)
 )`
 
 const CREATE_HOOP_TABLE_SQL = `
@@ -82,18 +82,18 @@ CREATE TABLE hoop_featured_story (
 	type text not null,
 	FOREIGN KEY(hoop_id) REFERENCES hoop (id),
 	FOREIGN KEY(story_id) REFERENCES story (id),
-    UNIQUE (story_id)
+	UNIQUE (story_id)
 )`
 
 const CREATE_COMMENT_TABLE_SQL = `
 CREATE TABLE comment (
-    id bigserial primary key,
-    user_id bigserial not null,
-    text varchar(255) not null,
-    hoop_id bigserial,
-    story_id bigserial,
-    created_at timestamp with time zone not null,
-    updated_at timestamp with time zone not null,
+	id bigserial primary key,
+	user_id bigserial not null,
+	text varchar(255) not null,
+	hoop_id bigserial,
+	story_id bigserial,
+	created_at timestamp with time zone not null,
+	updated_at timestamp with time zone not null,
 	FOREIGN KEY(user_id) REFERENCES "user" (id)
 )`
 
