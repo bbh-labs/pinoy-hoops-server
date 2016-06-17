@@ -887,7 +887,7 @@ func hoopLikesHandler(w http.ResponseWriter, r *http.Request) {
 		var count int64
 
 		if hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64); err == nil {
-			if err := db.QueryRow(COUNT_STORY_LIKES_SQL, hoopID).Scan(&count); err == nil {
+			if err := db.QueryRow(COUNT_HOOP_LIKES_SQL, hoopID).Scan(&count); err == nil {
 				w.Write([]byte(strconv.FormatInt(count, 10)))
 				return
 			}

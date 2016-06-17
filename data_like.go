@@ -41,8 +41,6 @@ func toggleLike(userID int64, otherID int64, typ string) error {
 	switch typ {
 	case "hoop":
 		query = INSERT_HOOP_LIKE_ACTIVITY_SQL
-	case "story":
-		query = INSERT_STORY_LIKE_ACTIVITY_SQL
 	}
 
 	// Insert Activity

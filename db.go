@@ -228,18 +228,6 @@ SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_a
 FROM story
 WHERE hoop_id = $1`
 
-const GET_MOST_COMMENTED_STORIES_SQL = `
-SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
-FROM story
-WHERE hoop_id = $1
-ORDER BY (SELECT COUNT(id) FROM activity WHERE type = 102 AND story_id = story.id) DESC`
-
-const GET_MOST_LIKED_STORIES_SQL = `
-SELECT id, hoop_id, user_id, name, description, image_url, created_at, updated_at
-FROM story
-WHERE hoop_id = $1
-ORDER BY (SELECT COUNT(id) FROM activity WHERE type = 202 AND story_id = story.id) DESC`
-
 const GET_LATEST_STORIES_SQL = `
 SELECT id, hoop_id, user_id, image_url, created_at, updated_at
 FROM story
@@ -270,17 +258,9 @@ const INSERT_HOOP_COMMENT_ACTIVITY_SQL = `
 INSERT INTO activity (user_id, type, hoop_id, created_at)
 VALUES ($1, $2, $3, NOW())`
 
-const INSERT_STORY_COMMENT_ACTIVITY_SQL = `
-INSERT INTO activity (user_id, type, story_id, created_at)
-VALUES ($1, $2, $3, NOW())`
-
 const INSERT_HOOP_LIKE_ACTIVITY_SQL = `
 INSERT INTO activity (user_id, type, hoop_id, story_id, created_at)
 VALUES ($1, $2, $3, 0, NOW())`
-
-const INSERT_STORY_LIKE_ACTIVITY_SQL = `
-INSERT INTO activity (user_id, type, hoop_id, story_id, created_at)
-VALUES ($1, $2, 0, $3, NOW())`
 
 const DELETE_HOOP_ACTIVITY_SQL = `
 DELETE FROM activity WHERE user_id = $1 AND type = $2 AND hoop_id = $3`
@@ -294,27 +274,14 @@ SELECT id, user_id, text, hoop_id, created_at, updated_at FROM comment
 WHERE hoop_id = $1
 ORDER BY created_at DESC`
 
-const GET_STORY_COMMENTS_SQL = `
-SELECT id, user_id, text, story_id, created_at, updated_at FROM comment
-WHERE story_id = $1
-ORDER BY created_at DESC`
-
 const INSERT_HOOP_COMMENT_SQL = `
 INSERT INTO comment (user_id, text, hoop_id, created_at, updated_at)
-VALUES ($1, $2, $3, NOW(), NOW())
-RETURNING id`
-
-const INSERT_STORY_COMMENT_SQL = `
-INSERT INTO comment (user_id, text, story_id, created_at, updated_at)
 VALUES ($1, $2, $3, NOW(), NOW())
 RETURNING id`
 
 // Like
 const COUNT_HOOP_LIKES_SQL = `
 SELECT COUNT(id) FROM activity WHERE hoop_id = $1 AND type = 202`
-
-const COUNT_STORY_LIKES_SQL = `
-SELECT COUNT(id) FROM activity WHERE story_id = $1 AND type = 202`
 
 const COUNT_HOOP_ACTIVITY_BY_USER_SQL = `
 SELECT COUNT(id) FROM activity WHERE user_id = $1 AND type = $2 AND hoop_id = $3`
