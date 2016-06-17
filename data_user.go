@@ -32,6 +32,18 @@ func (user *User) updateBackgroundImage(backgroundURL string) (err error) {
 	return
 }
 
+func (user *User) hasLikedHoop(hoopID int64) (yes bool, err error) {
+	var count int64
+
+	if err = db.QueryRow(USER_LIKED_HOOP_SQL, hoopID, user.ID).Scan(&count); err != nil {
+		return
+	}
+
+	yes = count > 0
+
+	return
+}
+
 func userExists(user *User, fetch bool) (bool, *User) {
 	var err error
 

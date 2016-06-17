@@ -286,3 +286,6 @@ SELECT COUNT(id) FROM activity WHERE user_id = $1 AND type = $2 AND hoop_id = $3
 
 const COUNT_STORY_ACTIVITY_BY_USER_SQL = `
 SELECT COUNT(id) FROM activity WHERE user_id = $1 AND type = $2 AND story_id = $3`
+
+const USER_LIKED_HOOP_SQL = `
+SELECT COUNT(id) FROM activity WHERE hoop_id = $1 AND type = 202 AND user_id = $2`

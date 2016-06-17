@@ -48,7 +48,7 @@ var urls = []string{
 }
 
 // Command-line flags
-var dbhost = flag.String("dbhost", "localhost", "database host")
+var dbhost = flag.String("dbhost", "0.0.0.0", "database host")
 var dbport = flag.String("dbport", "5432", "database port")
 var dbpass = flag.String("dbpass", "", "database password")
 var cachehost = flag.String("cachehost", "", "cache host")
@@ -164,6 +164,7 @@ func main() {
 	apiRouter.HandleFunc("/user/otherhoops", userOtherHoopsHandler)
 	apiRouter.HandleFunc("/hoop/comments", hoopCommentsHandler)
 	apiRouter.HandleFunc("/hoop/likes", hoopLikesHandler)
+	apiRouter.HandleFunc("/hoop/mylike", hoopMyLikeHandler)
 	apiRouter.HandleFunc("/hoops/nearby", nearbyHoopsHandler)
 	apiRouter.HandleFunc("/hoops/popular", popularHoopsHandler)
 	apiRouter.HandleFunc("/hoops/latest", latestHoopsHandler)
@@ -708,7 +709,7 @@ func commentHoopHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64)
+		hoopID, err := strconv.ParseInt(r.FormValue("hoopID"), 10, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -735,7 +736,7 @@ func likeHoopHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if hoopID := r.FormValue("hoop-id"); hoopID != "" {
+		if hoopID := r.FormValue("hoopID"); hoopID != "" {
 			hoopID, err := strconv.ParseInt(hoopID, 10, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -851,7 +852,7 @@ func userOtherHoopsHandler(w http.ResponseWriter, r *http.Request) {
 func hoopCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64)
+		hoopID, err := strconv.ParseInt(r.FormValue("hoopID"), 10, 64)
 		if err != nil {
 			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -883,7 +884,7 @@ func hoopLikesHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		var count int64
 
-		if hoopID, err := strconv.ParseInt(r.FormValue("hoop-id"), 10, 64); err == nil {
+		if hoopID, err := strconv.ParseInt(r.FormValue("hoopID"), 10, 64); err == nil {
 			if err := db.QueryRow(COUNT_HOOP_LIKES_SQL, hoopID).Scan(&count); err == nil {
 				w.Write([]byte(strconv.FormatInt(count, 10)))
 				return
@@ -891,6 +892,44 @@ func hoopLikesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		w.WriteHeader(http.StatusBadRequest)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func hoopMyLikeHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		var hoopID int64
+		var liked bool
+		var data []byte
+		var err error
+
+		ok, user := loggedIn(w, r, true)
+		if !ok {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if hoopID, err = strconv.ParseInt(r.FormValue("hoopID"), 10, 64); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if liked, err = user.hasLikedHoop(hoopID); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if data, err = json.Marshal(liked); err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Write(data)
+
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
