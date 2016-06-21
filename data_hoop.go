@@ -127,7 +127,7 @@ func insertHoop(userID int64, name, description, hoopImageURL, courtImageURL, cr
 
 	// Insert Hoop Story
 	if hoopImageURL != "" {
-		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, hoopImageURL).Scan(&storyID); err != nil {
+		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, hoopImageURL).Scan(&storyID); err != nil {
 			return err
 		}
 
@@ -138,7 +138,7 @@ func insertHoop(userID int64, name, description, hoopImageURL, courtImageURL, cr
 
 	// Insert Court Story
 	if courtImageURL != "" {
-		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, courtImageURL).Scan(&storyID); err != nil {
+		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, courtImageURL).Scan(&storyID); err != nil {
 			return err
 		}
 
@@ -149,7 +149,7 @@ func insertHoop(userID int64, name, description, hoopImageURL, courtImageURL, cr
 
 	// Insert Crew Story
 	if crewImageURL != "" {
-		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, name, description, crewImageURL).Scan(&storyID); err != nil {
+		if err := tx.QueryRow(INSERT_STORY_SQL, hoopID, userID, crewImageURL).Scan(&storyID); err != nil {
 			return err
 		}
 
