@@ -553,7 +553,7 @@ func hoopsHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 
 		if name := r.FormValue("name"); name != "" {
-			hoops, err = getHoops(GET_HOOPS_WITH_NAME_SQL, name)
+			hoops, err = getHoops(GET_HOOPS_WITH_NAME_SQL, "%"+name+"%")
 		} else {
 			hoops, err = getHoops(GET_HOOPS_SQL)
 		}
